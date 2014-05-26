@@ -1,4 +1,3 @@
-labs
-====
+# Abstract Factory - Labs
 
-pre-production experiments and explorations
+Development tests, see each folder for descriptions per experiment.
