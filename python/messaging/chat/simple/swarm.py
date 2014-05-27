@@ -65,21 +65,28 @@ if __name__ == '__main__':
             elif type(envelope.body) is protocol.StateRequest:
                 request = envelope.body
 
-                try:
-                    author = request.data[0]
-                except IndexError:
-                    author = envelope.author
+                threads = {}
+                for author in request.data:
+                    state = letters.get(author)
+                    threads.update(state)
 
-                state = letters.get(author)
-
-                print "Getting state for %s" % author
-                if state:
-                    reply = protocol.StateReply(data=state)
+                if threads:
+                    reply = protocol.StateReply(data=threads)
                     envelope = protocol.Envelope(author=envelope.author,
                                                  body=reply,
                                                  recipients=[envelope.author])
-                    print "Returning state: %s" % state
                     pub.send_json(envelope.dump())
+
+            elif type(envelope.body) is protocol.Invitation:
+                invitation = envelope.body
+
+                # invitation = protocol.Invitation(data=envelope.author)
+                envelope = protocol.Envelope(author=envelope.author,
+                                             body=invitation,
+                                             recipients=[invitation.data])
+                print "%s inviting %s" % (envelope.author, invitation.data)
+                pub.send_json(envelope.dump())
+
     spawn(publisher)
 
     print "Listening for messages @ %s" % "tcp://*:5555"

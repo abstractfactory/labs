@@ -41,104 +41,18 @@ clear_console = lambda: subprocess.call('cls'
 context = zmq.Context()
 
 
-def spawn(func, name=None):
-    thread = threading.Thread(target=func, name=name)
+def spawn(func, **kwargs):
+    thread = threading.Thread(target=func, **kwargs)
     thread.daemon = True
     thread.start()
 
 
-def display(envelope=None):
-    if envelope:
-        sys.stdout.write("\r{0}: {1}".format(envelope.author,
-                                             envelope.body.data))
-    sys.stdout.write(" " * 10)  # Clear line
-    sys.stdout.write("\n%s> " % author)
+class Peer(object):
+    """Peer API"""
 
-
-def incoming():
-    """Receive and display incoming letters"""
-    while True:
-        message = sub.recv_json()
-        assert message.get('type') == 'envelope'
-        envelope = protocol.Envelope.from_message(message)
-
-        # Only care about letters to this peer
-        if not author in envelope.recipients:
-            continue
-
-        if type(envelope.body) is protocol.Letter:
-            # If the incoming message is from a new peer,
-            # include this peer in list of outgoing recipients.
-            if not envelope.author in peers:
-                peers.append(envelope.author)
-
-            if envelope.author != author:
-                display(envelope)
-
-        elif type(envelope.body) is protocol.AllServices:
-            print "Command received"
-
-        elif type(envelope.body) is protocol.StateReply:
-            state = envelope.body
-            messages = state.data
-
-            for timestamp in sorted(messages):
-                message = messages[timestamp]
-                envelope = protocol.Envelope.from_message(message)
-
-                if author in envelope.recipients:
-                    display(envelope)
-                    time.sleep(0.01)
-
-        else:
-            print "Message not recognised: %r" % envelope
-
-
-def outgoing(says):
-    """Send letters and commands"""
-    parts = says.split()
-    header, remainder = parts[0], parts[1:]
-
-    if header == 'invite':
-        peers.extend(remainder)
-
-        # Inform swarm that peer is listening
-        # invite = protocol.Invitation(author=author,
-        #                              body=remainder,
-        #                              recipients=peers,
-        #                              timestamp=time.time())
-        # push.send_json(invite.dump())
-
-    elif header == 'services':
-        if not remainder:
-            print "Your services: %s" % services.__dict__.keys()
-        else:
-            print "%s services: %s" % (remainder[0],
-                                       services.__dict__.keys())
-
-    elif header == 'state':
-        state_request = protocol.StateRequest(data=remainder or [])
-        envelope = protocol.Envelope(author=author,
-                                     body=state_request,
-                                     recipients=[author])
-        push.send_json(envelope.dump())
-
-    else:
-        letter = protocol.Letter(data=says)
-        envelope = protocol.Envelope(author=author,
-                                     body=letter,
-                                     recipients=peers)
-        push.send_json(envelope.dump())
-
-
-class Services(object):
-    def funny_pic(self):
-        return "-------> Funny pic <--------"
-
-
-if __name__ == '__main__':
-    if len(sys.argv) >= 2:
-        author, peers = sys.argv[1], sys.argv[2:]
+    def __init__(self, author, peers):
+        self.author = author
+        self.peers = peers
 
         push = context.socket(zmq.PUSH)
         push.connect("tcp://192.168.1.2:5555")
@@ -147,17 +61,22 @@ if __name__ == '__main__':
         sub.setsockopt(zmq.SUBSCRIBE, '')
         sub.connect("tcp://192.168.1.2:5556")
 
-        clear_console()
-        services = Services()
-        spawn(incoming, 'incoming')
+        self.push = push
+        self.sub = sub
 
+        spawn(self.listen, name='listen')
+        self.catchup()
+
+    def start(self):
         while True:
             try:
-                sys.stdout.write("%s> " % author)
-                says = raw_input()
-                if not says:
+                sys.stdout.write("%s> " % self.author)
+                command = raw_input()
+
+                if not command:
                     continue
-                outgoing(says)
+
+                self.mediate(command)
 
             except KeyboardInterrupt:
                 print "\nGood bye"
@@ -166,6 +85,107 @@ if __name__ == '__main__':
             except Exception as e:
                 print e
                 break
+
+    def catchup(self):
+        """Request current state of messages already sent to `Peer`"""
+        state = protocol.StateRequest(data=self.peers)
+        self.send(state)
+
+    def send(self, payload):
+        envelope = protocol.Envelope(author=self.author,
+                                     body=payload,
+                                     recipients=self.peers)
+        self.push.send_json(envelope.dump())
+
+    def display(self, envelope=None):
+        if envelope:
+            sys.stdout.write("\r{0}: {1}".format(envelope.author,
+                                                 envelope.body.data))
+        sys.stdout.write(" " * 10)  # Clear line
+        sys.stdout.write("\n%s> " % author)
+
+    def listen(self):
+        """Receive and display incoming letters"""
+        while True:
+            message = self.sub.recv_json()
+            assert message.get('type') == 'envelope'
+            envelope = protocol.Envelope.from_message(message)
+
+            # Only care about letters to this peer
+            if not self.author in envelope.recipients:
+                continue
+
+            if type(envelope.body) is protocol.Letter:
+                # If the incoming message is from a new peer,
+                # include this peer in list of mediate recipients.
+                if not envelope.author in self.peers:
+                    self.peers.append(envelope.author)
+
+                if envelope.author != self.author:
+                    self.display(envelope)
+
+            elif type(envelope.body) is protocol.AllServices:
+                print "Command received"
+
+            elif type(envelope.body) is protocol.Invitation:
+                invitation = envelope.body
+                print "%s is inviting you" % invitation.data
+
+            elif type(envelope.body) is protocol.StateReply:
+                state = envelope.body
+                messages = state.data
+
+                for timestamp in sorted(messages):
+                    message = messages[timestamp]
+                    envelope = protocol.Envelope.from_message(message)
+
+                    if self.author in envelope.recipients:
+                        self.display(envelope)
+                        time.sleep(0.01)
+
+            else:
+                print "Message not recognised: %r" % envelope
+
+    def mediate(self, command):
+        """Resolve command and send
+
+        Example:
+            markus> say hi
+            = mediate(command='say hi')
+
+        """
+
+        parts = command.split()
+        action, args = parts[0], parts[1:]
+
+        if action == 'invite':
+            self.peers.extend(args)
+
+            # Inform swarm that peer is listening
+            invite = protocol.Invitation(data=args)
+            self.send(invite)
+
+        elif action == 'state':
+            state_request = protocol.StateRequest(data=args or [])
+            self.send(state_request)
+
+        else:
+            letter = protocol.Letter(data=command)
+            self.send(letter)
+
+
+# class Services(object):
+#     def funny_pic(self):
+#         return "-------> Funny pic <--------"
+
+
+if __name__ == '__main__':
+    if len(sys.argv) >= 2:
+        author, peers = sys.argv[1], sys.argv[2:]
+
+        clear_console()
+        peer = Peer(author, peers)
+        peer.start()
 
     else:
         print "Usage: client.py my_name peer1_name peer2_name ..."
