@@ -1,38 +1,15 @@
-"""
-   client     _           _      server
- __________   |           |    __________
-|          |  |           |   |          |
-|   PUSH   |----------------->|   PULL   |---
-|__________|  |           |   |__________|   |
-              |           |                  |
- _________    |           |    _________     |
-|         |   |           |   |         |<---
-|   SUB   |<------------------|   PUB   |
-|_________|   |           |   |_________|
-              |           |
-
-All messages are sent to all clients.
-
-The client then filters messages based on who he has
-chosen to listen to.
-
-"""
 from __future__ import absolute_import
 
-import os
+# import os
 import sys
 import zmq
 import time
-import subprocess
+# import subprocess
 
 # Local library
 import lib
 import protocol
 
-clear_console = lambda: subprocess.call('cls'
-                                        if os.name == 'nt'
-                                        else 'clear',
-                                        shell=True)
 context = zmq.Context()
 
 
@@ -164,32 +141,3 @@ class Peer(object):
             self.display(message)
         else:
             print "Command not recognised"
-
-
-if __name__ == '__main__':
-    if len(sys.argv) >= 2:
-        author, peers = sys.argv[1], sys.argv[2:]
-
-        clear_console()
-        peer = Peer(author, peers)
-
-        while True:
-            try:
-                sys.stdout.write("%s> " % peer.author)
-                command = raw_input()
-
-                if not command:
-                    continue
-
-                peer.mediate(command)
-
-            except KeyboardInterrupt:
-                print "\nGood bye"
-                break
-
-            except Exception as e:
-                print e
-                break
-
-    else:
-        print "Usage: client.py my_name peer1_name peer2_name ..."

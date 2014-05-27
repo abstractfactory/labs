@@ -12,9 +12,9 @@ A PEER represents a client, server is called SWARM and a human-to-human correspo
 
 ### Requirements
 
-* `REQ01` PEER may recieve LETTERS
-* `REQ02` PEER may send LETTERS
-* `REQ03` PEER may join late
+* `REQ01` *PEER may recieve LETTERS*
+* `REQ02` *PEER may send LETTERS*
+* `REQ03` *PEER may join late*
 * `REQ04` PEER may list remote peer's services
 * `REQ05` PEER may list SWARM services
 * `REQ06` PEER may list available PEERS
