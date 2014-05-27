@@ -1,39 +1,43 @@
-"""
-Server receives:
-
-
-"""
-
 from __future__ import absolute_import
 
 import zmq
 import time
-import threading
 
 # local library
+import lib
 import protocol
 
 context = zmq.Context()
 
 
-def spawn(func):
-    thread = threading.Thread(target=func)
-    thread.daemon = True
-    thread.start()
+class Swarm(object):
+    letters = {}
 
+    def __init__(self):
+        pull = context.socket(zmq.PULL)  # Incoming messages
+        pull.bind("tcp://*:5555")
 
-# Keep track of messages sent
-letters = {}
+        pub = context.socket(zmq.PUB)  # Distributing messages
+        pub.bind("tcp://*:5556")
 
+        self.pull = pull
+        self.pub = pub
 
-if __name__ == '__main__':
-    pull = context.socket(zmq.PULL)  # Incoming messages
-    pull.bind("tcp://*:5555")
+        lib.spawn(self.listen, name='listen')
 
-    pub = context.socket(zmq.PUB)  # Distributing messages
-    pub.bind("tcp://*:5556")
+    def listen(self):
+        print "Listening for messages @ %s" % "tcp://*:5555"
+        print "Broadcasting messages @ %s" % "tcp://*:5556"
 
-    def publisher():
+        while True:
+            message = self.pull.recv_json()
+            envelope = protocol.Envelope.from_message(message)
+            self.publisher(envelope)
+
+    def publish(self, envelope):
+        self.pub.send_json(envelope.dump())
+
+    def publisher(self, envelope):
         """
              ________    ___________
             |        |  |           |   /
@@ -42,55 +46,45 @@ if __name__ == '__main__':
 
         """
 
-        while True:
-            message = pull.recv_json()
-            assert message.get('type') == 'envelope'
-            envelope = protocol.Envelope.from_message(message)
+        if envelope.type == 'letter':
+            letter = envelope.payload
 
-            if type(envelope.body) is protocol.Letter:
-                letter = envelope.body
+            if not envelope.author in self.letters:
+                self.letters[envelope.author] = {}
 
-                if not envelope.author in letters:
-                    letters[envelope.author] = {}
+            gmtime = time.gmtime(envelope.timestamp)
+            asctime = time.asctime(gmtime)
+            print "On %s, %s said: %s" % (asctime,
+                                          envelope.author,
+                                          letter)
+            self.letters[envelope.author][envelope.timestamp] = envelope.dump()
+            self.publish(envelope)
 
-                gmtime = time.gmtime(envelope.timestamp)
-                asctime = time.asctime(gmtime)
-                print "On %s, %s said: %s" % (asctime,
-                                              envelope.author,
-                                              letter.data)
-                letters[envelope.author][envelope.timestamp] = envelope.dump()
+        elif envelope.type == 'staterequest':
+            request = envelope.payload
 
-                pub.send_json(envelope.dump())
+            threads = {}
+            for author in request:
+                state = self.letters.get(author, {})
+                threads.update(state)
 
-            elif type(envelope.body) is protocol.StateRequest:
-                request = envelope.body
-
-                threads = {}
-                for author in request.data:
-                    state = letters.get(author)
-                    threads.update(state)
-
-                if threads:
-                    reply = protocol.StateReply(data=threads)
-                    envelope = protocol.Envelope(author=envelope.author,
-                                                 body=reply,
-                                                 recipients=[envelope.author])
-                    pub.send_json(envelope.dump())
-
-            elif type(envelope.body) is protocol.Invitation:
-                invitation = envelope.body
-
-                # invitation = protocol.Invitation(data=envelope.author)
+            if threads:
                 envelope = protocol.Envelope(author=envelope.author,
-                                             body=invitation,
-                                             recipients=[invitation.data])
-                print "%s inviting %s" % (envelope.author, invitation.data)
-                pub.send_json(envelope.dump())
+                                             payload=threads,
+                                             recipients=[envelope.author],
+                                             type='statereply')
+                self.publish(envelope)
 
-    spawn(publisher)
+        elif envelope.type == 'invitation':
+            invitation = envelope.payload
+            envelope = protocol.Envelope(author=envelope.author,
+                                         payload=invitation,
+                                         recipients=invitation)
+            print "%s inviting %s" % (envelope.author, invitation)
+            self.publish(envelope)
 
-    print "Listening for messages @ %s" % "tcp://*:5555"
-    print "Broadcasting messages @ %s" % "tcp://*:5556"
+if __name__ == '__main__':
+    swarm = Swarm()
 
     while True:
         try:
