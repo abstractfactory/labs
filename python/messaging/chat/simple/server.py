@@ -1,48 +1,106 @@
+"""
+Server receives:
+
+
+"""
+
 import zmq
+import time
+import threading
 
 context = zmq.Context()
 
 
+def spawn(func):
+    thread = threading.Thread(target=func)
+    thread.daemon = True
+    thread.start()
+
+
 class Letter(object):
-    def __init__(self, data, author, timestamp):
-        self.data = data
+    """Letter
+
+    Responsibilities:
+        - Carry message
+        - Carry author
+        - Carry recipient(s)
+        - Carry time
+
+    """
+
+    def __init__(self, body, author, recipients, timestamp):
+        self.body = body
         self.author = author
+        self.recipients = recipients
         self.timestamp = timestamp
-        self.delivered = False
 
     @classmethod
     def from_message(cls, message):
-        letter = cls(data=message['data'],
+        letter = cls(body=message['body'],
                      author=message['author'],
+                     recipients=message['recipients'],
                      timestamp=message['time'])
         return letter
+
+    def dump(self):
+        return {
+            'from': self.author,
+            'to': self.recipients,
+            'message': self.body
+        }
+
 
 # Keep track of messages sent
 letters = {}
 
 
 if __name__ == '__main__':
-    consumer = context.socket(zmq.PULL)
-    consumer.bind("tcp://*:5555")
+    pull = context.socket(zmq.PULL)  # Incoming messages
+    pull.bind("tcp://*:5555")
 
-    producer = context.socket(zmq.PUB)
-    producer.bind("tcp://*:5556")
+    pub = context.socket(zmq.PUB)  # Distributing messages
+    pub.bind("tcp://*:5556")
 
-    try:
+    rep = context.socket(zmq.REP)  # Responding to queries
+    rep.bind("tcp://*:5557")
+
+    def commando():
         while True:
-            message = consumer.recv_json()
+            request = rep.recv_json()
+            action = request['action']
+            author = request['author']
+
+            if action == 'state':
+                print "Getting state for %s" % author
+                state = letters.get(author, {})
+                rep.send_json(state)
+
+    def publisher():
+        while True:
+            message = pull.recv_json()
             letter = Letter.from_message(message)
 
             action = message['action']
-            author = message['author']
-            time = message['time']
-            data = message['data']
+            author = letter.author
+            time = letter.timestamp
 
             if action == 'says':
-                producer.send_multipart([str(author), str(data)])
+                if not author in letters:
+                    letters[author] = {}
+                print "Storing %s @ %s" % (letter.body, time)
+                letters[author][time] = letter.dump()
 
-            if action == 'listen':
-                print "%s is also listening on %s" % (author, data)
+                pub.send_json(letter.dump())
 
-    except KeyboardInterrupt:
-        print "\nGood bye"
+    spawn(commando)
+    spawn(publisher)
+
+    print "Listening for requests on @ %s" % "tcp://*:5557"
+    print "Listning for messages @ %s" % "tcp://*:5555"
+
+    while True:
+        try:
+            time.sleep(1)
+        except KeyboardInterrupt:
+            print "\nGood bye"
+            break
