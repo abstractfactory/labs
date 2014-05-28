@@ -16,9 +16,10 @@ context = zmq.Context()
 class Peer(object):
     """Peer API"""
 
-    def __init__(self, author, peers):
+    def __init__(self, author, peers=None, services=None):
         self.author = author
-        self.peers = list()
+        self.peers = list()  # Filled up below
+        self.services = services or list()
 
         push = context.socket(zmq.PUSH)
         push.connect("tcp://192.168.1.2:5555")
@@ -31,16 +32,12 @@ class Peer(object):
         self.sub = sub
 
         lib.spawn(self.listen, name='listen')
-        self.catchup()
+
+        # Catchup
+        self.mediate('state')
 
         for peer in peers:
             self.mediate('invite %s' % peer)
-
-    def catchup(self):
-        """Request current state of messages already sent to `Peer`"""
-        state = protocol.Envelope(payload=self.peers,
-                                  type='staterequest')
-        self.send(state)
 
     def send(self, envelope):
         envelope.author = self.author
@@ -51,11 +48,11 @@ class Peer(object):
         return "\r{0}: {1}".format(envelope.author,
                                    envelope.payload)
 
-    def remote_display(self, message=None):
-        self.local_display(message)
+    def display_remote_message(self, message=None):
+        self.display_local_message(message)
         self.init_shell()
 
-    def local_display(self, message=None):
+    def display_local_message(self, message=None):
         sys.stdout.write("\r" + " " * 30)  # Clear line
 
         if message:
@@ -87,7 +84,9 @@ class Peer(object):
         if not self.author in envelope.recipients:
             return
 
-        if envelope.type == 'letter':
+        type = envelope.type
+
+        if type == 'letter':
             # If the incoming message is from a new peer,
             # include this peer in list of mediate recipients.
             if not envelope.author in self.peers:
@@ -95,36 +94,58 @@ class Peer(object):
 
             if envelope.author != self.author:
                 message = self.formatter(envelope)
-                self.remote_display(message)
+                self.display_remote_message(message)
 
-        elif envelope.type == 'service':
+        elif type == 'service':
             result = envelope.payload
-            self.remote_display("%s" % result)
+            self.display_remote_message("%s" % result)
 
-        elif envelope.type == 'ordered':
-            order_id = protocol.OrderId.from_dict(envelope.payload)
+        elif type == 'receipt':
+            order = protocol.Order.from_dict(envelope.payload)
+
+            def expand(dic, messages=None, level=1):
+                messages = messages or list()
+
+                for field, value in sorted(dic.iteritems()):
+                    if isinstance(value, dict):
+                        expand(value, messages, level + 1)
+                        continue
+
+                    field = field.title()
+                    try:
+                        value = value.title()
+                    except:
+                        pass
+                    messages.append("{level}{field}: {value}".format(
+                        level='    ' * level,
+                        field=field,
+                        value=value))
+
+                return messages
+
             message = "Your receipt:\n"
-            message += "  Order id: %s" % order_id.id
-            self.remote_display(message)
+            message += '\n'.join(expand(order.to_dict()))
 
-        elif envelope.type == 'status':
+            self.display_remote_message(message)
+
+        elif type == 'status':
             statuses = envelope.payload
             message = "Status:"
             for id, status in sorted(statuses.iteritems()):
                 message += '\n  {id}: {status}'.format(
                     id=id,
                     status=status)
-            self.remote_display(message)
+            self.display_remote_message(message)
 
-        elif envelope.type == 'services':
+        elif type == 'services':
             query = envelope.payload
-            self.remote_display(query)
+            self.display_remote_message(query)
 
-        elif envelope.type == 'invitation':
+        elif type == 'invitation':
             invitation = envelope.payload
             print "%s is inviting you" % invitation
 
-        elif envelope.type == 'state':
+        elif type == 'state':
             state = envelope.payload
             messages = state
 
@@ -134,21 +155,22 @@ class Peer(object):
 
                 if self.author in envelope.recipients:
                     message = self.formatter(envelope)
-                    self.remote_display(message)
+                    self.display_remote_message(message)
                     time.sleep(0.01)
 
-        elif envelope.type == 'peers':
+        elif type == 'peers':
             peers = envelope.payload
             message = 'All peers:\n'
             message += ' '.join(["  %s\n" % peer for peer in peers])
-            self.remote_display(message)
+            self.display_remote_message(message)
 
-        elif envelope.type == 'error':
+        elif type == 'error':
             error = envelope.payload
-            self.remote_display(error)
+            self.display_remote_message(str(error))
 
         else:
-            self.remote_display("Message not recognised: %r" % envelope.type)
+            self.display_remote_message("Message not recognised: %r"
+                                        % type)
 
     def mediate(self, command):
         """Resolve command from shell and send
@@ -211,7 +233,7 @@ class Peer(object):
         elif action == 'peers':
             message = 'Invited peers:\n'
             message += ' '.join(["  %s\n" % peer for peer in self.peers])
-            self.local_display(message)
+            self.display_local_message(message)
 
         elif action == 'allpeers':
             allpeers = protocol.Envelope(type='queryPeers')

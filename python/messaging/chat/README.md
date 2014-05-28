@@ -25,6 +25,7 @@ A PEER represents a client, server is called SWARM and a human-to-human correspo
 * `REQ11` One peer may send LETTERS to exactly one peer
 * `REQ12` **One peer may send LETTERS to multiple PEERS**
 * `REQ13` **PEER may initiate conversation**
+* `REQ14` **PEER may request status of service**
 
 **Send/receive**
 

@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
-import zmq
+# standard library
+import sys
 import time
 
 # local library
@@ -8,6 +9,10 @@ import lib
 import service
 import protocol
 import process
+import traceback
+
+# vendor dependency
+import zmq
 
 context = zmq.Context()
 
@@ -101,8 +106,10 @@ class Swarm(object):
                 parser.add_argument("name")
                 parser.add_argument("--quantity", default=1)
                 parser.add_argument("--milk", dest="milk", action="store_true")
-                parser.add_argument("--no-milk", dest="milk", action="store_false")
                 parser.add_argument("--size", default='regular')
+                parser.add_argument("--no-milk",
+                                    dest="milk",
+                                    action="store_false")
 
                 parsed = None
 
@@ -125,14 +132,16 @@ class Swarm(object):
                     # Execute order
 
                     try:
-                        order_id = service.order_coffee(order)
-                        order_id = protocol.OrderId(id=order_id)
-                        result = order_id.to_dict()
-                    except Exception as e:
-                        result = str(e)
+                        order = service.order_coffee(order)
+                        result = order.to_dict()
 
-                    out_envelope.payload = result
-                    out_envelope.type = 'ordered'
+                    except Exception as e:
+                        sys.stderr.write(traceback.format_exc())
+                        out_envelope.payload = "Error: %s" % e
+
+                    else:
+                        out_envelope.payload = result
+                        out_envelope.type = 'receipt'
 
             else:
                 out_envelope.payload = 'Could not order "%s"' % item
@@ -140,7 +149,7 @@ class Swarm(object):
             self.publish(out_envelope)
 
         else:
-            print "Unrecognised envelope acquired"
+            print "Unrecognised envelope acquired: %s" % in_envelope.type
 
 
 if __name__ == '__main__':

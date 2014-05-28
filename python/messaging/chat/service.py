@@ -41,11 +41,11 @@ def order_coffee(order):
     order.status = 'ordered'
     order.id = order_id
 
-    lib.spawn(make_coffee, args=[order])
+    lib.spawn(make_coffee, args=[order], name='order: %s' % order_id)
 
     print "Id: %s" % order_id
 
-    return order_id
+    return order
 
 
 def order_status(order_id):
@@ -65,9 +65,9 @@ def order_status(order_id):
 
 def make_coffee(order):
     order.status = 'being prepared'
-    time.sleep(5)
-    order.status = 'in progress'
     time.sleep(10)
+    order.status = 'in progress'
+    time.sleep(30)
     order.status = 'served'
 
 

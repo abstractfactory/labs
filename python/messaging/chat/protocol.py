@@ -45,9 +45,13 @@ class AbstractItem(object):
 
 
 class Order(AbstractItem):
-    def __init__(self, item, location,
-                 cost, status=0, payment=None,
-                 order_id=0):
+    def __init__(self,
+                 item,
+                 location,
+                 cost,
+                 status=0,
+                 payment=None,
+                 order_id=0):  # order_id is remapped below
         self.item = item
         self.location = location
         self.cost = cost
@@ -59,9 +63,14 @@ class Order(AbstractItem):
     def from_dict(cls, dic):
         dic = super(Order, cls).from_dict(dic)
 
+        # Expand item
         item = dic.pop('item')
         coffee = by_name('coffee').from_dict(item)
         dic['item'] = coffee
+
+        # Remap id matching __init__ signature
+        dic['order_id'] = dic.pop('id')
+
         order = cls(**dic)
         return order
 
@@ -73,7 +82,7 @@ class Order(AbstractItem):
             'cost': self.cost,
             'status': self.status,
             'payment': self.payment,
-            'id': self.id
+            'id': self.id  # Attention, this is remapped in from_dict()
         })
         return dic
 
@@ -106,7 +115,7 @@ class Item(AbstractItem):
         return cls(**dic)
 
     def to_dict(self):
-        dic = super(Order, self).to_dict()
+        dic = super(Item, self).to_dict()
         dic.update({
             'name': self.name,
             'quantity': self.quantity,
