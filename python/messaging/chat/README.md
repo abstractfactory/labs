@@ -4,19 +4,19 @@
 
 > Instant messaging for Apps - http://jaxenter.com/an-introduction-to-scriptable-sockets-with-zeromq-49167.html
 
-An illustration of a simple human-to-human messaging application, made to explore the possibility of whether or not a similar approach can be taken in the design of computer-to-computer messaging, in a Service-oriented architecture.
+An illustration of a simple human-to-human messaging application, made to explore the possibility of whether or not a similar approach can be taken in the design of computer-to-computer messaging in developing Service-oriented architectures.
 
 ### Language
 
-A PEER represents a client, server is called SWARM and a human-to-human correspondence is called LETTER.
+A PEER represents a client, server is called SWARM and a human-to-human correspondence is called LETTER and SERVICE is an atomic unit of work provided by either SWARM or PEER. A PEER without the ability to make requests is referred to as a WORKER.
 
 ### Requirements
 
 * `REQ01` **PEER may recieve LETTERS**
 * `REQ02` **PEER may send LETTERS**
 * `REQ03` **PEER may join late**
-* `REQ04` PEER may list remote peer's services
-* `REQ05` **PEER may list SWARM services**
+* `REQ04` PEER may list remote peer's SERVICES
+* `REQ05` **PEER may list SWARM SERVICES**
 * `REQ06` **PEER may list available PEERS**
 * `REQ07` **PEER may list all PEERS**
 * `REQ08` PEER may signal availability (yes/no)
@@ -25,7 +25,10 @@ A PEER represents a client, server is called SWARM and a human-to-human correspo
 * `REQ11` One peer may send LETTERS to exactly one peer
 * `REQ12` **One peer may send LETTERS to multiple PEERS**
 * `REQ13` **PEER may initiate conversation**
-* `REQ14` **PEER may request status of service**
+* `REQ14` **PEER may request status of running SERVICE**
+* `REQ15` There may be multiple PEERS with similar SERVICES
+* `REQ16` A SERVICE may be distributed across multiple available PEERS
+* `REQ17` A PEER may list running SERVICES
 
 **Send/receive**
 
@@ -41,14 +44,15 @@ This involves:
 * Each letter contains a `delivered` and `timestap` property.
 * Messages that has been `delivered` are removed from queue.
 
-**List PEER services**
+**List PEER SERVICES**
 
-Involves returning upon query a list of available services that a remote computer may perform.
+Involves returning upon query a list of available SERVICES that a remote computer may perform.
 
-* Send me a funny pic
-* Compute n+1
+* Order coffee
+* Publish file
+* Compute algorithm
 
-**List SWARM services**
+**List SWARM SERVICES**
 
 Which smilies can I send to my PEER?
 
@@ -63,3 +67,9 @@ Return list of all PEERS ever connected to the SWARM. Involves SWARM maintaining
 **Status**
 
 A PEER may signal that he is either active or inactive. The SWARM is responsible for determining whether a PEER is available or not (indirectly, via his response to heartbeats).
+
+**Multiple PEERS**
+
+Multiple PEERS may exist providing similar services, such as taking orders, publishing files or converting images.
+
+When a PEER requests services from one of many PEERS, each request will get distributes across all available PEERS.
