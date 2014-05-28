@@ -1,4 +1,5 @@
 import os
+import argparse
 import threading
 import subprocess
 
@@ -14,3 +15,11 @@ clear_console = lambda: subprocess.call(
     if os.name == 'nt'
     else 'clear',
     shell=True)
+
+
+class ArgumentParser(argparse.ArgumentParser):
+    def error(self, message):
+        raise ValueError(message)
+
+    def exit(self, status=0, message=None):
+        raise SystemExit(message)

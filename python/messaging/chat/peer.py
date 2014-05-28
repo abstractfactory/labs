@@ -3,10 +3,12 @@ from __future__ import absolute_import
 import sys
 import zmq
 import time
+# import argparse
 
 # Local library
 import lib
 import protocol
+# import service
 
 context = zmq.Context()
 
@@ -43,7 +45,7 @@ class Peer(object):
     def send(self, envelope):
         envelope.author = self.author
         envelope.recipients = self.peers
-        self.push.send_json(envelope.dump())
+        self.push.send_json(envelope.to_dict())
 
     def formatter(self, envelope):
         return "\r{0}: {1}".format(envelope.author,
@@ -71,7 +73,7 @@ class Peer(object):
 
         while True:
             message = self.sub.recv_json()
-            envelope = protocol.Envelope.from_message(message)
+            envelope = protocol.Envelope.from_dict(message)
             self.processor(envelope)
 
     def processor(self, envelope):
@@ -95,8 +97,28 @@ class Peer(object):
                 message = self.formatter(envelope)
                 self.remote_display(message)
 
+        elif envelope.type == 'service':
+            result = envelope.payload
+            self.remote_display("%s" % result)
+
+        elif envelope.type == 'ordered':
+            order_id = protocol.OrderId.from_dict(envelope.payload)
+            message = "Your receipt:\n"
+            message += "  Order id: %s" % order_id.id
+            self.remote_display(message)
+
+        elif envelope.type == 'status':
+            statuses = envelope.payload
+            message = "Status:"
+            for id, status in sorted(statuses.iteritems()):
+                message += '\n  {id}: {status}'.format(
+                    id=id,
+                    status=status)
+            self.remote_display(message)
+
         elif envelope.type == 'services':
-            print "Command received"
+            query = envelope.payload
+            self.remote_display(query)
 
         elif envelope.type == 'invitation':
             invitation = envelope.payload
@@ -108,7 +130,7 @@ class Peer(object):
 
             for timestamp in sorted(messages):
                 message = messages[timestamp]
-                envelope = protocol.Envelope.from_message(message)
+                envelope = protocol.Envelope.from_dict(message)
 
                 if self.author in envelope.recipients:
                     message = self.formatter(envelope)
@@ -121,11 +143,15 @@ class Peer(object):
             message += ' '.join(["  %s\n" % peer for peer in peers])
             self.remote_display(message)
 
+        elif envelope.type == 'error':
+            error = envelope.payload
+            self.remote_display(error)
+
         else:
-            print "Message not recognised: %r" % envelope.type
+            self.remote_display("Message not recognised: %r" % envelope.type)
 
     def mediate(self, command):
-        """Resolve command and send
+        """Resolve command from shell and send
          ___________
         |           | send
         |  Command  |------>
@@ -155,8 +181,25 @@ class Peer(object):
                                        type='invitation')
             self.send(invite)
 
+        elif action == 'order':
+            """Order a coffee"""
+
+            if not args:
+                print "- Order what?"
+                return
+
+            envelope = protocol.Envelope(payload=args,
+                                         type='order')
+            self.send(envelope)
+
+        elif action == 'services':
+            query = args[0] if args else None
+            envelope = protocol.Envelope(payload=query,
+                                         type='queryServices')
+            self.send(envelope)
+
         elif action == 'state':
-            state_request = protocol.Envelope(payload=args or [],
+            state_request = protocol.Envelope(payload=args,
                                               type='queryState')
             self.send(state_request)
 

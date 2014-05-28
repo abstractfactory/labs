@@ -5,7 +5,9 @@ import time
 
 # local library
 import lib
+import service
 import protocol
+import process
 
 context = zmq.Context()
 
@@ -13,6 +15,7 @@ context = zmq.Context()
 class Swarm(object):
     letters = dict()  # Keep track of all letters sent, per peer
     peers = set()  # Keep track of all peers
+    orders = dict()  # Keep track of all orders
 
     def __init__(self):
         pull = context.socket(zmq.PULL)  # Incoming messages
@@ -27,18 +30,6 @@ class Swarm(object):
         lib.spawn(self.listen, name='listen')
 
     def listen(self):
-        print "Listening for messages @ %s" % "tcp://*:5555"
-        print "Broadcasting messages @ %s" % "tcp://*:5556"
-
-        while True:
-            message = self.pull.recv_json()
-            envelope = protocol.Envelope.from_message(message)
-            self.publisher(envelope)
-
-    def publish(self, envelope):
-        self.pub.send_json(envelope.dump())
-
-    def publisher(self, envelope):
         """
              ________    ___________
             |        |  |           |   /
@@ -47,57 +38,110 @@ class Swarm(object):
 
         """
 
-        if envelope.type == 'letter':
-            letter = envelope.payload
+        print "Listening for messages @ %s" % "tcp://*:5555"
+        print "Broadcasting messages @ %s" % "tcp://*:5556"
 
-            if not envelope.author in self.letters:
-                self.letters[envelope.author] = {}
+        while True:
+            message = self.pull.recv_json()
+            envelope = protocol.Envelope.from_dict(message)
+            self.publisher(envelope)
 
-            # Maintain all original authors
-            self.peers.add(envelope.author)
+    def publish(self, envelope):
+        """Physically publish `envelope`"""
+        self.pub.send_json(envelope.to_dict())
 
-            gmtime = time.gmtime(envelope.timestamp)
-            asctime = time.asctime(gmtime)
-            print "On %s, %s said: %s" % (asctime,
-                                          envelope.author,
-                                          letter)
-            self.letters[envelope.author][envelope.timestamp] = envelope.dump()
-            self.publish(envelope)
+    def publisher(self, in_envelope):
+        """Take incoming envelope, process it, and send one back out"""
 
-        elif envelope.type == 'queryState':
-            request = envelope.payload
+        type = in_envelope.type
 
-            threads = {}
-            for author in request:
-                state = self.letters.get(author, {})
-                threads.update(state)
+        if type == 'letter':
+            out_envelope = process.letter(self, in_envelope)
+            self.publish(out_envelope)
 
-            if threads:
-                envelope = protocol.Envelope(author=envelope.author,
-                                             payload=threads,
-                                             recipients=[envelope.author],
-                                             type='state')
-                self.publish(envelope)
+        elif type == 'queryState':
+            out_envelope = process.query_state(self, in_envelope)
+            self.publish(out_envelope)
 
-        elif envelope.type == 'queryPeers':
-            peers = list(self.peers)
-            envelope = protocol.Envelope(author=envelope.author,
-                                         payload=peers,
-                                         recipients=[envelope.author],
-                                         type='peers')
-            self.publish(envelope)
+        elif type == 'queryPeers':
+            out_envelope = process.query_peers(self, in_envelope)
+            self.publish(out_envelope)
 
-        elif envelope.type == 'invitation':
-            invitation = envelope.payload
-            envelope = protocol.Envelope(author=envelope.author,
-                                         payload=invitation,
-                                         recipients=invitation)
-            print "%s inviting %s" % (envelope.author, invitation)
+        elif type == 'invitation':
+            out_envelope = process.invitation(self, in_envelope)
+            self.publish(out_envelope)
 
-            self.peers.update(invitation)
-            self.peers.add(envelope.author)
+        elif type == 'queryServices':
+            out_envelope = process.query_services(self, in_envelope)
+            self.publish(out_envelope)
 
-            self.publish(envelope)
+        elif type == 'order':
+            order = in_envelope.payload
+            item, args = order[0], order[1:]
+
+            out_envelope = protocol.Envelope(
+                author=in_envelope.author,
+                payload=None,
+                recipients=[in_envelope.author],
+                type='error')
+
+            if item == 'status':
+                orders = args or service.orders.keys()
+                statuses = {}
+
+                for order in orders:
+                    order_ = service.orders[int(order)]
+                    statuses[order] = order_.status
+
+                out_envelope.payload = statuses
+                out_envelope.type = 'status'
+
+            elif item == 'coffee':
+                parser = lib.ArgumentParser(prog='order coffee')
+                parser.add_argument("name")
+                parser.add_argument("--quantity", default=1)
+                parser.add_argument("--milk", dest="milk", action="store_true")
+                parser.add_argument("--no-milk", dest="milk", action="store_false")
+                parser.add_argument("--size", default='regular')
+
+                parsed = None
+
+                try:
+                    parsed = parser.parse_args(args)
+
+                except ValueError:
+                    out_envelope.payload = parser.format_help()
+
+                except SystemExit:
+                    # Parser exited without error (e.g. to return help)
+                    pass
+
+                if parsed:
+                    item = protocol.Coffee(**parsed.__dict__)
+                    order = protocol.Order(item,
+                                           location='takeaway',
+                                           cost=2.10)
+
+                    # Execute order
+
+                    try:
+                        order_id = service.order_coffee(order)
+                        order_id = protocol.OrderId(id=order_id)
+                        result = order_id.to_dict()
+                    except Exception as e:
+                        result = str(e)
+
+                    out_envelope.payload = result
+                    out_envelope.type = 'ordered'
+
+            else:
+                out_envelope.payload = 'Could not order "%s"' % item
+
+            self.publish(out_envelope)
+
+        else:
+            print "Unrecognised envelope acquired"
+
 
 if __name__ == '__main__':
     swarm = Swarm()
