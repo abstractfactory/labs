@@ -11,7 +11,8 @@ context = zmq.Context()
 
 
 class Swarm(object):
-    letters = {}
+    letters = dict()  # Keep track of all letters sent, per peer
+    peers = set()  # Keep track of all peers
 
     def __init__(self):
         pull = context.socket(zmq.PULL)  # Incoming messages
@@ -52,6 +53,9 @@ class Swarm(object):
             if not envelope.author in self.letters:
                 self.letters[envelope.author] = {}
 
+            # Maintain all original authors
+            self.peers.add(envelope.author)
+
             gmtime = time.gmtime(envelope.timestamp)
             asctime = time.asctime(gmtime)
             print "On %s, %s said: %s" % (asctime,
@@ -60,7 +64,7 @@ class Swarm(object):
             self.letters[envelope.author][envelope.timestamp] = envelope.dump()
             self.publish(envelope)
 
-        elif envelope.type == 'staterequest':
+        elif envelope.type == 'queryState':
             request = envelope.payload
 
             threads = {}
@@ -72,8 +76,16 @@ class Swarm(object):
                 envelope = protocol.Envelope(author=envelope.author,
                                              payload=threads,
                                              recipients=[envelope.author],
-                                             type='statereply')
+                                             type='state')
                 self.publish(envelope)
+
+        elif envelope.type == 'queryPeers':
+            peers = list(self.peers)
+            envelope = protocol.Envelope(author=envelope.author,
+                                         payload=peers,
+                                         recipients=[envelope.author],
+                                         type='peers')
+            self.publish(envelope)
 
         elif envelope.type == 'invitation':
             invitation = envelope.payload
@@ -81,6 +93,10 @@ class Swarm(object):
                                          payload=invitation,
                                          recipients=invitation)
             print "%s inviting %s" % (envelope.author, invitation)
+
+            self.peers.update(invitation)
+            self.peers.add(envelope.author)
+
             self.publish(envelope)
 
 if __name__ == '__main__':

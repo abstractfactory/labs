@@ -1,21 +1,25 @@
 
 from __future__ import absolute_import
 
-import sys
 import argparse
 
 import lib
 import peer
 
-if len(sys.argv) >= 2:
-    author, peers = sys.argv[1], sys.argv[2:]
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("author")
+    parser.add_argument('-p', "--peer", action='append', dest='peers',
+                        default=[], help='Add peer to talk to')
+    args = parser.parse_args()
 
     lib.clear_console()
-    peer = peer.Peer(author, peers)
+    peer = peer.Peer(args.author, args.peers)
 
     while True:
         try:
-            sys.stdout.write("%s> " % peer.author)
+            peer.init_shell()
             command = raw_input()
 
             if not command:
@@ -30,6 +34,3 @@ if len(sys.argv) >= 2:
         except Exception as e:
             print e
             break
-
-else:
-    print "Usage: client.py my_name peer1_name peer2_name ..."
