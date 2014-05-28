@@ -4,7 +4,7 @@
 
 > Instant messaging for Apps - http://jaxenter.com/an-introduction-to-scriptable-sockets-with-zeromq-49167.html
 
-An illustration of a simple human-to-human messaging application, made to explore the possibility of whether or not a similar approach can be taken in the design of computer-to-computer messaging.
+An illustration of a simple human-to-human messaging application, made to explore the possibility of whether or not a similar approach can be taken in the design of computer-to-computer messaging, in a Service-oriented architecture.
 
 ### Language
 
@@ -24,7 +24,7 @@ A PEER represents a client, server is called SWARM and a human-to-human correspo
 * `REQ10` **There may be multiple PEERS**
 * `REQ11` One peer may send LETTERS to exactly one peer
 * `REQ12` **One peer may send LETTERS to multiple PEERS**
-* `REQ13` PEER may initiate conversation
+* `REQ13` **PEER may initiate conversation**
 
 **Send/receive**
 
