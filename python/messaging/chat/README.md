@@ -51,16 +51,16 @@ Possible Payloads are:
 * ~~`REQ02`~~ `PEER` may send `LETTERS`
 * ~~`REQ03`~~ `PEER` may join late
 * ~~`REQ04`~~ `PEER` may list remote peer's `SERVICES`
-* ~~REQ05~~ `PEER` may list `SWARM` `SERVICES`
-* ~~REQ06~~ `PEER` may list available `PEERS`
-* ~~REQ07~~ `PEER` may list all `PEERS`
+* ~~`REQ05`~~ `PEER` may list `SWARM` `SERVICES`
+* ~~`REQ06`~~ `PEER` may list available `PEERS`
+* ~~`REQ07`~~ `PEER` may list all `PEERS`
 * `REQ08` `PEER` may signal availability (yes/no)
 * `REQ09` `PEER` may signal inactivity (yes/no)
-* ~~REQ10~~ There may be multiple `PEERS`
+* ~~`REQ10`~~ There may be multiple `PEERS`
 * `REQ11` One peer may send `LETTERS` to exactly one peer
-* ~~REQ12~~ One peer may send `LETTERS` to multiple `PEERS`
-* ~~REQ13~~ `PEER` may initiate conversation
-* ~~REQ14~~ `PEER` may request status of running `SERVICE`
+* ~~`REQ12`~~ One peer may send `LETTERS` to multiple `PEERS`
+* ~~`REQ13`~~ `PEER` may initiate conversation
+* ~~`REQ14`~~ `PEER` may request status of running `SERVICE`
 * `REQ15` There may be multiple `PEERS` with similar `SERVICES`
 * `REQ16` A `TASK` may be distributed across multiple available `PEERS`
 * `REQ17` A `PEER` may list running `TASKS`
