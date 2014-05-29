@@ -12,6 +12,7 @@ class Envelope(object):
         self.recipients = recipients
         self.timestamp = time.time()
         self.type = type
+        self.return_address = None
 
     @classmethod
     def from_dict(cls, message):
@@ -23,7 +24,6 @@ class Envelope(object):
 
     def to_dict(self):
         return {
-            'type': self.type,
             'author': self.author,
             'recipients': self.recipients,
             'payload': self.payload,
@@ -35,13 +35,34 @@ class Envelope(object):
 class AbstractItem(object):
     @classmethod
     def from_dict(cls, dic):
-        dic.pop('type')
+        dic.pop('type', None)
         return dic
 
     def to_dict(self):
         return {
             'type': type(self).__name__.lower()
         }
+
+
+class Query(AbstractItem):
+    def __init__(self, name, questioner, args=None, kwargs=None):
+        self.name = name
+        self.questioner = questioner
+        self.args = args or list()
+        self.kwargs = kwargs or dict()
+
+    @classmethod
+    def from_dict(cls, dic):
+        dic = super(Query, cls).from_dict(dic)
+        return cls(**dic)
+
+    def to_dict(self):
+        dic = super(Query, self).to_dict()
+        dic['name'] = self.name
+        dic['questioner'] = self.questioner
+        dic['args'] = self.args
+        dic['kwargs'] = self.kwargs
+        return dic
 
 
 class Order(AbstractItem):
@@ -64,9 +85,10 @@ class Order(AbstractItem):
         dic = super(Order, cls).from_dict(dic)
 
         # Expand item
-        item = dic.pop('item')
-        coffee = by_name('coffee').from_dict(item)
-        dic['item'] = coffee
+        item_dict = dic.pop('item')
+        typ = item_dict['type']
+        item_obj = by_name(typ).from_dict(item_dict)
+        dic['item'] = item_obj
 
         # Remap id matching __init__ signature
         dic['order_id'] = dic.pop('id')
@@ -103,11 +125,9 @@ class OrderId(AbstractItem):
 
 
 class Item(AbstractItem):
-    def __init__(self, name, quantity=1, milk=False, size='regular'):
+    def __init__(self, name, quantity=1):
         self.name = name
         self.quantity = quantity
-        self.milk = milk
-        self.size = size
 
     @classmethod
     def from_dict(cls, dic):
@@ -119,21 +139,41 @@ class Item(AbstractItem):
         dic.update({
             'name': self.name,
             'quantity': self.quantity,
+        })
+        return dic
+
+
+class Coffee(Item):
+    def __init__(self, milk=False, size='regular', *args, **kwargs):
+        super(Coffee, self).__init__(*args, **kwargs)
+        self.milk = milk
+        self.size = size
+
+    def to_dict(self):
+        dic = super(Coffee, self).to_dict()
+        dic.update({
             'milk': self.milk,
             'size': self.size,
         })
         return dic
 
 
-class Coffee(Item):
-    def __init__(self, *args, **kwargs):
-        super(Coffee, self).__init__(*args, **kwargs)
+class Chocolate(Item):
+    def __init__(self, shade='dark', *args, **kwargs):
+        super(Chocolate, self).__init__(*args, **kwargs)
+        self.shade = shade
+
+    def to_dict(self):
+        dic = super(Chocolate, self).to_dict()
+        dic.update({'shade': self.shade})
+        return dic
 
 
 protocols = {
     'item': Item,
     'order': Order,
     'coffee': Coffee,
+    'chocolate': Chocolate,
     'orderid': OrderId,
 }
 
@@ -151,3 +191,6 @@ if __name__ == '__main__':
 
     print Coffee.from_dict(item.to_dict()).to_dict()
     print Order.from_dict(order.to_dict()).to_dict()
+
+    query = Query('stats', 'markus')
+    print query

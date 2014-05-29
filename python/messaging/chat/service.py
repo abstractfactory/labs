@@ -48,19 +48,29 @@ def order_coffee(order):
     return order
 
 
-def order_status(order_id):
-    try:
-        order = orders[order_id]
-    except IndexError:
-        raise IndexError("Order not found")
+def order_chocolate(order):
+    """Order a chocolate
 
-    return "{q} {size} {name}{plural}, {milk} status: {status}".format(
-        q=order.item.quantity,
-        size=order.item.size,
-        name=order.item.name.title(),
-        plural='s' if order.item.quantity > 1 else '',
-        milk='%s milk' % ('with' if order.item.milk else 'without'),
-        status=order.status)
+    Place an order for a chocolate; your options are:
+        - Dark
+        - White
+
+    Usage:
+        > order chocolate --dark
+        > order chocolate --white --quantity 2
+
+    """
+
+    order_id = 0
+    while order_id in orders:
+        order_id += 1
+
+    orders[order_id] = order
+
+    order.status = 'served'  # Chocolate is self-serve
+    order.id = order_id
+
+    return order
 
 
 def make_coffee(order):
@@ -73,7 +83,7 @@ def make_coffee(order):
 
 services = {
     'order_coffee': order_coffee,
-    'order_status': order_status
+    'order_chocolate': order_chocolate
 }
 
 

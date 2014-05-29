@@ -3,84 +3,325 @@
 from __future__ import absolute_import
 
 # standard library
+import sys
 import time
+import traceback
 
 # local library
 import protocol
 import service
+import lib
 
 
-def letter(self, envelope):
-    letter = envelope.payload
+def letter(self, in_envelope):
+    letter = in_envelope.payload
 
-    if not envelope.author in self.letters:
-        self.letters[envelope.author] = {}
+    if not in_envelope.author in self.letters:
+        self.letters[in_envelope.author] = {}
 
     # Maintain all original authors
-    self.peers.add(envelope.author)
+    self.peers.add(in_envelope.author)
 
-    gmtime = time.gmtime(envelope.timestamp)
+    gmtime = time.gmtime(in_envelope.timestamp)
     asctime = time.asctime(gmtime)
     print "On %s, %s said: %s" % (asctime,
-                                  envelope.author,
+                                  in_envelope.author,
                                   letter)
-    dic = envelope.to_dict()
-    self.letters[envelope.author][envelope.timestamp] = dic
+    dic = in_envelope.to_dict()
+    self.letters[in_envelope.author][in_envelope.timestamp] = dic
 
-    return envelope
+    return in_envelope
 
 
-def query_state(self, envelope):
-    query = envelope.payload
+def state_query(self, in_envelope):
+    query = in_envelope.payload
 
     threads = {}
     for author in query:
         state = self.letters.get(author, {})
         threads.update(state)
 
-    envelope = protocol.Envelope(author=envelope.author,
-                                 payload=threads,
-                                 recipients=[envelope.author],
-                                 type='state')
-    return envelope
+    out_envelope = protocol.Envelope(author=in_envelope.author,
+                                     payload=threads,
+                                     recipients=[in_envelope.author],
+                                     type='state')
+    return out_envelope
 
 
-def query_peers(self, envelope):
+def peer_query(self, in_envelope):
+    """Swarm queries peer
+
+    PEER A
+     _             SWARM
+    | |   query     _
+    | |----------->|\|
+    | |            |\|             PEER B
+    | |            |\|    query     _
+    | |            |\|============>| |
+    | |            |\|             | |
+    | |            |\|             | |
+    | |            |\|             | |
+    | |            |\|             | |
+    | |            |\|    stats    | |
+    | |            |\|<------------|_|
+    | |            |\|
+    | |   stats    |\|
+    | |<-----------|_|
+    |_|
+
+    """
+
+    peers, query = in_envelope.payload
+    out_envelope = protocol.Envelope(author=in_envelope.author,
+                                     payload=query,
+                                     recipients=peers,
+                                     type='__swarmQuery__')
+    print "peer_query(): Sending %s to %s" % (query, peers)
+    return out_envelope
+
+
+def peers_query(self, in_envelope):
     peers = list(self.peers)
-    envelope = protocol.Envelope(author=envelope.author,
-                                 payload=peers,
-                                 recipients=[envelope.author],
-                                 type='peers')
-    return envelope
+    out_envelope = protocol.Envelope(author=in_envelope.author,
+                                     payload=peers,
+                                     recipients=[in_envelope.author],
+                                     type='peers')
+    return out_envelope
 
 
-def invitation(self, envelope):
-    invitation = envelope.payload
-    envelope = protocol.Envelope(author=envelope.author,
-                                 payload=invitation,
-                                 recipients=invitation)
-    print "%s inviting %s" % (envelope.author, invitation)
+def invitation(self, in_envelope):
+    invitation = in_envelope.payload
+    out_envelope = protocol.Envelope(author=in_envelope.author,
+                                     payload=invitation,
+                                     recipients=invitation,
+                                     type='invitation')
+    print "%s inviting %s" % (out_envelope.author, invitation)
 
     self.peers.update(invitation)
-    self.peers.add(envelope.author)
-    return envelope
+    self.peers.add(out_envelope.author)
+    return out_envelope
 
 
-def query_services(self, envelope):
-    query = envelope.payload
+def services_query(self, in_envelope):
+    peer = in_envelope.payload
 
-    if not query:
+    if peer:
+        try:
+            message = getattr(service, peer).__doc__
+        except AttributeError:
+            message = 'Sorry, service "%s" was not available' % peer
+    else:
         services = service.services.keys()
         message = 'Available swarm services:\n'
         message += ' '.join(["  %s\n" % serv for serv in services])
-    else:
-        try:
-            message = getattr(service, query).__doc__
-        except AttributeError:
-            message = 'Sorry, service "%s" was not available' % query
 
-    envelope = protocol.Envelope(author=envelope.author,
-                                 payload=message,
-                                 recipients=[envelope.author],
-                                 type='services')
-    return envelope
+    out_envelope = protocol.Envelope(author=in_envelope.author,
+                                     payload=message,
+                                     recipients=[in_envelope.author],
+                                     type='services')
+    return out_envelope
+
+
+def order_placement(self, in_envelope):
+    """Place an order via SWARM
+
+    Your options are:
+        coffee
+        chocolate
+
+    """
+
+    order = in_envelope.payload
+    item, args = order[0], order[1:]
+
+    prices = {'coffee': 2.10,
+              'chocolate': 0.30}
+
+    out_envelope = protocol.Envelope(
+        author=in_envelope.author,
+        payload=None,
+        recipients=[in_envelope.author],
+        type='error')
+
+    if item == 'status':
+        orders = args or service.orders.keys()
+        statuses = {}
+
+        for order in orders:
+            order_ = service.orders[int(order)]
+            statuses[order] = order_.status
+
+        out_envelope.payload = statuses
+        out_envelope.type = 'status'
+
+    elif item == 'coffee':
+        parser = lib.ArgumentParser(prog='order coffee')
+        parser.add_argument("name")
+        parser.add_argument("--quantity", default=1)
+        parser.add_argument("--milk", dest="milk", action="store_true")
+        parser.add_argument("--size", default='regular')
+        parser.add_argument("--no-milk",
+                            dest="milk",
+                            action="store_false")
+        parser.add_argument("--takeaway",
+                            dest="location",
+                            action="store_false",
+                            default=True)
+
+        parsed = None
+
+        try:
+            parsed = parser.parse_args(args).__dict__
+
+        except ValueError:
+            out_envelope.payload = parser.format_help()
+
+        except SystemExit:
+            # Parser exited without error (e.g. to return help)
+            pass
+
+        if parsed:
+            location = parsed.pop('location')
+            price = prices['coffee'] * int(parsed['quantity'])
+
+            item = protocol.Coffee(**parsed)
+            order = protocol.Order(item,
+                                   location='takeaway',
+                                   cost=prices['coffee'])
+
+            # Execute order
+
+            try:
+                order = service.order_coffee(order)
+                result = order.to_dict()
+
+            except Exception as e:
+                sys.stderr.write(traceback.format_exc())
+                out_envelope.payload = "Error: %s" % e
+
+            else:
+                out_envelope.payload = result
+                out_envelope.type = 'receipt'
+
+    elif item == 'chocolate':
+        parser = lib.ArgumentParser(prog='order chocolate')
+        parser.add_argument("name")
+        parser.add_argument("--quantity", default=1)
+        parser.add_argument("--dark",
+                            dest="shade",
+                            action="store_const",
+                            const='dark',
+                            default='dark')
+        parser.add_argument("--white",
+                            dest="shade",
+                            action="store_const",
+                            const='white',
+                            default='dark')
+        parser.add_argument("--takeaway",
+                            dest="location",
+                            action="store_false",
+                            default=True)
+
+        parsed = None
+
+        try:
+            parsed = parser.parse_args(args).__dict__
+
+        except ValueError:
+            out_envelope.payload = parser.format_help()
+
+        except SystemExit:
+            # Parser exited without error (e.g. to return help)
+            pass
+
+        if parsed:
+            location = parsed.pop('location')
+            price = prices['chocolate'] * int(parsed['quantity'])
+
+            item = protocol.Chocolate(**parsed)
+            order = protocol.Order(item,
+                                   location=location,
+                                   cost=price)
+
+            # Execute order
+
+            try:
+                order = service.order_chocolate(order)
+                result = order.to_dict()
+
+            except Exception as e:
+                sys.stderr.write(traceback.format_exc())
+                out_envelope.payload = "Error: %s" % e
+
+            else:
+                out_envelope.payload = result
+                out_envelope.type = 'receipt'
+
+    else:
+        out_envelope.payload = 'Could not order "%s"' % item
+
+    return out_envelope
+
+
+def stats_query(self, in_envelope):
+    """Swarm queries peer
+
+    PEER A
+     _             SWARM
+    | |   query     _
+    | |----------->|\|
+    | |            |\|             PEER B
+    | |            |\|    query     _
+    | |            |\|============>| |
+    | |            |\|             | |
+    | |            |\|             | |
+    | |            |\|             | |
+    | |            |\|             | |
+    | |            |\|    stats    | |
+    | |            |\|<------------|_|
+    | |            |\|
+    | |   stats    |\|
+    | |<-----------|_|
+    |_|
+
+    """
+
+    stats_query = in_envelope.payload
+    peers = stats_query['peers']  # list
+    out_envelope = protocol.Envelope(author=in_envelope.author,
+                                     payload=stats_query,
+                                     recipients=peers,
+                                     type='__swarmQuery__')
+    return out_envelope
+
+
+def peer_results(self, in_envelope):
+    """Results have been returned from swarmQuery, process it
+
+    PEER A
+     _             SWARM
+    | |   query     _
+    | |----------->|\|
+    | |            |\|             PEER B
+    | |            |\|    query     _
+    | |            |\|------------>| |
+    | |            |\|             | |
+    | |            |\|             | |
+    | |            |\|             | |
+    | |            |\|             | |
+    | |            |\|    stats    | |
+    | |            |\|<------------|_|
+    | |            |\|
+    | |   stats    |\|
+    | |<===========|_|
+    |_|
+
+    """
+
+    stats_result = in_envelope.payload
+    questioner = stats_result['questioner']
+    out_envelope = protocol.Envelope(author=questioner,
+                                     payload=stats_result,
+                                     recipients=[questioner],
+                                     type='__queryResults__')
+    return out_envelope

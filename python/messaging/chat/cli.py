@@ -25,7 +25,7 @@ if __name__ == '__main__':
             if not command:
                 continue
 
-            peer.mediate(command)
+            peer.route_command(command)
 
         except KeyboardInterrupt:
             print "\nGood bye"
