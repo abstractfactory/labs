@@ -65,7 +65,7 @@ class Swarm(object):
             'orderPlacement': process.order_placement,
             'stateQuery': process.state_query,
             'peersQuery': process.peers_query,
-            'servicesQuery': process.services_query,
+            # 'servicesQuery': process.services_query,
             'statsQuery': process.stats_query,
             'peerQuery': process.peer_query,
             'heartbeat': process.heartbeat,

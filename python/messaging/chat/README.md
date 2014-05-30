@@ -52,7 +52,7 @@ A message sent across the wire is called an `ENVELOPE` and has the following lay
 {
     "type": MESSAGE_TYPE,
     "author": AUTHOR,
-    "recipients": TARGET_ADDRESSES,
+    "recipients": TARGET_AUTHORS,
     "payload": RAW_DATA,
     "timestamp": TIME_OF_TRANSMISSION
 }

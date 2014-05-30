@@ -3,7 +3,7 @@
 from __future__ import absolute_import
 
 # standard library
-import time
+# import time
 
 # local library
 import lib
@@ -11,9 +11,34 @@ import peer
 # import service
 
 
-def is_service(func):
-    func.service = True
-    return func
+def divide(x, y):
+    return x / y
+
+
+def take_order(order):
+    print "Taking order"
+    # order = service.order_coffee(order)
+
+    # # Store order
+    # order.id = 0
+    # while order.id in self.orders:
+    #     order.id += 1
+
+    # self.orders[order.id] = order
+
+    # lib.spawn(service.make_coffee,
+    #           args=[order],
+    #           name='order: %s' % order.id)
+
+    # return order
+
+
+def serve_coffee(order):
+    pass
+
+
+services = peer.Peer.services  # Maintain super-services
+services['order'] = take_order
 
 
 class Barista(peer.Peer):
@@ -21,32 +46,11 @@ class Barista(peer.Peer):
 
     # Baristas handle orders between each other
     orders = dict()
+    services = services
 
     def __init__(self, *args, **kwargs):
         super(Barista, self).__init__(*args, **kwargs)
         self.name = 'barista'
-        self.services = [self.take_order]
-
-    @is_service
-    def take_order(self, order):
-        print "Taking order"
-        # order = service.order_coffee(order)
-
-        # # Store order
-        # order.id = 0
-        # while order.id in self.orders:
-        #     order.id += 1
-
-        # self.orders[order.id] = order
-
-        # lib.spawn(service.make_coffee,
-        #           args=[order],
-        #           name='order: %s' % order.id)
-
-        # return order
-
-    def serve_coffee(self, order):
-        pass
 
 
 if __name__ == '__main__':

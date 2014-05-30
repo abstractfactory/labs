@@ -101,24 +101,24 @@ def invitation(self, in_envelope):
     return out_envelope
 
 
-def services_query(self, in_envelope):
-    peer = in_envelope.payload
+# def services_query(self, in_envelope):
+#     peer = in_envelope.payload
 
-    if peer:
-        try:
-            message = getattr(service, peer).__doc__
-        except AttributeError:
-            message = 'Sorry, service "%s" was not available' % peer
-    else:
-        services = service.services.keys()
-        message = 'Available swarm services:\n'
-        message += ' '.join(["  %s\n" % serv for serv in services])
+#     if peer:
+#         try:
+#             message = getattr(service, peer).__doc__
+#         except AttributeError:
+#             message = 'Sorry, service "%s" was not available' % peer
+#     else:
+#         services = service.services.keys()
+#         message = 'Available swarm services:\n'
+#         message += ' '.join(["  %s\n" % serv for serv in services])
 
-    out_envelope = protocol.Envelope(author=in_envelope.author,
-                                     payload=message,
-                                     recipients=[in_envelope.author],
-                                     type='services')
-    return out_envelope
+#     out_envelope = protocol.Envelope(author=in_envelope.author,
+#                                      payload=message,
+#                                      recipients=[in_envelope.author],
+#                                      type='services')
+#     return out_envelope
 
 
 def order_placement(self, in_envelope):

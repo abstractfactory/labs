@@ -6,6 +6,10 @@ import lib
 orders = {}
 
 
+def add(x, y):
+    return x + y
+
+
 def order_coffee(order):
     """Order a coffee
 

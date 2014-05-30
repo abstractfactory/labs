@@ -7,7 +7,7 @@ import time
 # Local library
 import lib
 import protocol
-# import service
+import service
 
 context = zmq.Context()
 
@@ -15,10 +15,12 @@ context = zmq.Context()
 class Peer(object):
     """Peer API"""
 
+    # the format is {public name: func}
+    services = {'add': service.add}
+
     def __init__(self, name='unknown', peers=None, services=None):
         self.name = name
         self.peers = set()  # Filled up below
-        self.services = services or list()
 
         push = context.socket(zmq.PUSH)
         push.connect("tcp://localhost:5555")
@@ -86,6 +88,20 @@ class Peer(object):
         type = envelope.type
 
         if type == 'letter':
+            """Letter was sent from another PEER
+
+            PEER A
+             _             SWARM
+            | |             _             PEER B
+            | |            |/|             _
+            | |            |/|            | |
+            | |            |/|   letter   | |
+            | |   letter   |/|<-----------|_|
+            | |<===========|_|
+            |_|
+
+            """
+
             # If the incoming message is from a new peer,
             # include this peer in list of route_command recipients.
             self.peers.add(envelope.author)
@@ -94,22 +110,21 @@ class Peer(object):
                 message = self.formatter(envelope)
                 self.display_remote_message(message)
 
-        elif type == 'service':
-            result = envelope.payload
-            self.display_remote_message("%s" % result)
-
         elif type == 'receipt':
-            """A receipt was returned from SWARM order.
+            """A receipt was returned from SWARM order. (event)
 
             PEER A
              _             SWARM
-            | |   order     _
-            | |----------->|/|
+            | |             _
+            | |            |/|
             | |            |/|
             | |            |/|
             | |  receipt   |/|
             | |<===========|_|
             |_|
+
+            Note: messages are received indirectly, as a result
+                  of an earlier/remote request.
 
             """
 
@@ -122,6 +137,20 @@ class Peer(object):
             self.display_remote_message(message)
 
         elif type == 'status':
+            """Order status was returned from SWARM order(s)
+
+            PEER A
+             _             SWARM
+            | |   query     _
+            | |----------->|/|
+            | |            |/|
+            | |            |/|
+            | |   status   |/|
+            | |<===========|_|
+            |_|
+
+            """
+
             statuses = envelope.payload
             message = "Status:"
             for id, status in sorted(statuses.iteritems()):
@@ -130,16 +159,40 @@ class Peer(object):
                     status=status)
             self.display_remote_message(message)
 
-        elif type == 'services':
-            query = envelope.payload
-            self.display_remote_message(query)
-
         elif type == 'invitation':
+            """Invitation sent from another PEER
+
+            PEER A
+             _             SWARM
+            | |             _             PEER B
+            | |            |/|             _
+            | |            |/|            | |
+            | |            |/| invitation | |
+            | | invitation |/|<-----------|_|
+            | |<===========|_|
+            |_|
+
+            """
+
             invitation = envelope.author
             self.peers.add(invitation)
             self.display_remote_message("%s invited you" % invitation)
 
         elif type == 'state':
+            """State was returned from SWARM
+
+            PEER A
+             _             SWARM
+            | |   query     _
+            | |----------->|/|
+            | |            |/|
+            | |            |/|
+            | |   state    |/|
+            | |<===========|_|
+            |_|
+
+            """
+
             state = envelope.payload
             messages = state
 
@@ -153,6 +206,19 @@ class Peer(object):
                     time.sleep(0.01)
 
         elif type == 'peers':
+            """Order status was returned from SWARM order(s)
+
+            PEER A
+             _             SWARM
+            | |   query     _
+            | |----------->|/|
+            | |            |/|
+            | |            |/|
+            | |   status   |/|
+            | |<===========|_|
+            |_|
+
+            """
             peers = envelope.payload
             message = 'All peers:'
 
@@ -170,29 +236,23 @@ class Peer(object):
 
             PEER A
              _             SWARM
-            | |   query     _
-            | |----------->| |
-            | |            | |             PEER B
-            | |            | |    query     _
-            | |            | |------------>|\|
-            | |            | |             |\|
-            | |            | |             |\|
-            | |            | |             |\|
-            | |            | |             |\|
-            | |            | |    stats    |\|
-            | |            | |<============|_|
-            | |            | |
-            | |   stats    | |
-            | |<-----------|_|
+            | |   query     _             PEER B
+            | |----------->|/|   query     _
+            | |            |/|===========>| |
+            | |            |/|            | |
+            | |            |/|            |_|
+            | |            |_|
             |_|
 
             """
+
             query = protocol.Query.from_dict(envelope.payload)
 
             self.display_remote_message("- %s is asking about you"
                                         % query.questioner)
 
             if query.name == 'stats':
+                """Swarm queries statistics"""
                 statistics = lib.local_stats()
                 results = query.reply(peer=self.name,
                                       payload=statistics)
@@ -200,16 +260,8 @@ class Peer(object):
                                              type='__peerResults__')
                 self.send(envelope)
 
-            elif query.name == 'services':
-                services = [service.__name__ for service in self.services]
-                results = query.reply(peer=self.name,
-                                      payload=services)
-
-                envelope = protocol.Envelope(payload=results,
-                                             type='__peerResults__')
-                self.send(envelope)
-
             elif query.name == 'mood':
+                """Swarm queries mood"""
                 results = query.reply(peer=self.name,
                                       payload='happy')
                 envelope = protocol.Envelope(payload=results,
@@ -217,6 +269,7 @@ class Peer(object):
                 self.send(envelope)
 
             else:
+                """Swarm queries something unknown"""
                 results = query.reply(peer=self.name,
                                       payload='invalid')
                 envelope = protocol.Envelope(payload=results,
@@ -228,20 +281,12 @@ class Peer(object):
 
             PEER A
              _             SWARM
-            |\|   query     _
-            |\|----------->| |
-            |\|            | |             PEER B
-            |\|            | |    query     _
-            |\|            | |------------>| |
-            |\|            | |             | |
-            |\|            | |             | |
-            |\|            | |             | |
-            |\|            | |             | |
-            |\|            | |    stats    | |
-            |\|            | |<------------|_|
-            |\|            | |
-            |\|   stats    | |
-            |\|<===========|_|
+            | |             _             PEER B
+            | |            |/|             _
+            | |            |/|            | |
+            | |            |/|   results  | |
+            | |   results  |/|<-----------|_|
+            | |<===========|_|
             |_|
 
             """
@@ -282,10 +327,10 @@ class Peer(object):
                                % results.peer.title())
                 else:
                     message = "\n%s <Services>:\n" % results.peer.title()
-                    for service in services:
-                        title = service.replace("_", " ")
+                    for service_ in services:
+                        title = service_.replace("_", " ")
                         title = title.title()
-                        message += "    %s (%s)\n" % (title, service)
+                        message += "    %s (%s)\n" % (title, service_)
                 self.display_remote_message(message)
 
             else:
@@ -380,19 +425,13 @@ class Peer(object):
             PEER A
              _             SWARM
             |\|   query     _
-            |\|===========>| |
-            |\|            | |             PEER B
+            |\|===========>| |             PEER B
             |\|            | |    query     _
             |\|            | |------------>| |
             |\|            | |             | |
             |\|            | |             | |
-            |\|            | |             | |
-            |\|            | |             | |
-            |\|            | |    stats    | |
-            |\|            | |<------------|_|
-            |\|            | |
-            |\|   stats    | |
-            |\|<-----------|_|
+            |\|            | |             |_|
+            |\|            |_|
             |_|
 
             """
@@ -429,16 +468,16 @@ class Peer(object):
 
                 self.display_local_message(message)
 
-        elif command == 'services':
-            """Query peer for services"""
-            peer = args[0] if args else None
+        # elif command == 'services':
+        #     """Query peer for services"""
+        #     peer = args[0] if args else None
 
-            if peer:
-                envelope = protocol.Envelope(payload=peer,
-                                             type='servicesQuery')
-                self.send(envelope)
-            else:
-                self.display_local_message("Who's services?")
+        #     if peer:
+        #         envelope = protocol.Envelope(payload=peer,
+        #                                      type='servicesQuery')
+        #         self.send(envelope)
+        #     else:
+        #         self.display_local_message("Who's services?")
 
         elif command == 'state':
             peers = args
