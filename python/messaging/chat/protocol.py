@@ -14,6 +14,9 @@ class Envelope(object):
         self.type = type
         self.return_address = None
 
+        if hasattr(payload, 'to_dict'):
+            self.payload = payload.to_dict()
+
     @classmethod
     def from_dict(cls, message):
         envelope = cls(author=message['author'],
@@ -31,6 +34,12 @@ class Envelope(object):
             'type': self.type
         }
 
+    # def reply(self, author, payload):
+    #     return Envelope(author=author,
+    #                     payload=payload,
+    #                     recipients=[self.author],
+    #                     type=self.type)
+
 
 class AbstractItem(object):
     @classmethod
@@ -45,11 +54,10 @@ class AbstractItem(object):
 
 
 class Query(AbstractItem):
-    def __init__(self, name, questioner, args=None, kwargs=None):
+    def __init__(self, name, questioner, payload=None):
         self.name = name
         self.questioner = questioner
-        self.args = args or list()
-        self.kwargs = kwargs or dict()
+        self.payload = payload
 
     @classmethod
     def from_dict(cls, dic):
@@ -60,8 +68,35 @@ class Query(AbstractItem):
         dic = super(Query, self).to_dict()
         dic['name'] = self.name
         dic['questioner'] = self.questioner
-        dic['args'] = self.args
-        dic['kwargs'] = self.kwargs
+        dic['payload'] = self.payload
+        return dic
+
+    def reply(self, peer, payload):
+        return QueryResults(
+            name=self.name,
+            peer=peer,
+            questioner=self.questioner,
+            payload=payload)
+
+
+class QueryResults(AbstractItem):
+    def __init__(self, name, peer, questioner, payload=None):
+        self.name = name  # Name or results (typically name of query)
+        self.peer = peer  # Results from who?
+        self.questioner = questioner  # Who's askin'?
+        self.payload = payload  # The results themselves
+
+    @classmethod
+    def from_dict(cls, dic):
+        dic = super(QueryResults, cls).from_dict(dic)
+        return cls(**dic)
+
+    def to_dict(self):
+        dic = super(QueryResults, self).to_dict()
+        dic['name'] = self.name
+        dic['peer'] = self.peer
+        dic['questioner'] = self.questioner
+        dic['payload'] = self.payload
         return dic
 
 

@@ -76,7 +76,6 @@ def peer_query(self, in_envelope):
                                      payload=query,
                                      recipients=peers,
                                      type='__swarmQuery__')
-    print "peer_query(): Sending %s to %s" % (query, peers)
     return out_envelope
 
 
@@ -148,8 +147,11 @@ def order_placement(self, in_envelope):
         statuses = {}
 
         for order in orders:
-            order_ = service.orders[int(order)]
-            statuses[order] = order_.status
+            try:
+                order_ = service.orders[int(order)]
+                statuses[order] = order_.status
+            except KeyError:
+                statuses[order] = 'no order found'
 
         out_envelope.payload = statuses
         out_envelope.type = 'status'
@@ -296,7 +298,7 @@ def stats_query(self, in_envelope):
 
 
 def peer_results(self, in_envelope):
-    """Results have been returned from swarmQuery, process it
+    """Results have been returned from peer, process it
 
     PEER A
      _             SWARM
@@ -318,10 +320,13 @@ def peer_results(self, in_envelope):
 
     """
 
-    stats_result = in_envelope.payload
-    questioner = stats_result['questioner']
-    out_envelope = protocol.Envelope(author=questioner,
-                                     payload=stats_result,
-                                     recipients=[questioner],
+    results = protocol.QueryResults.from_dict(in_envelope.payload)
+    out_envelope = protocol.Envelope(author=results.peer,
+                                     payload=results,
+                                     recipients=[results.questioner],
                                      type='__queryResults__')
     return out_envelope
+
+
+def heartbeat(self, in_envelope):
+    """Update peer status"""

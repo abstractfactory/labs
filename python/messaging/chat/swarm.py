@@ -18,6 +18,7 @@ class Swarm(object):
     letters = dict()  # Keep track of all letters sent, per peer
     peers = set()  # Keep track of all peers
     orders = dict()  # Keep track of all orders
+    heartbeats = dict()  # Keep your ear close to the peer's chests
 
     def __init__(self):
         pull = context.socket(zmq.PULL)  # Incoming messages
@@ -67,13 +68,15 @@ class Swarm(object):
             'servicesQuery': process.services_query,
             'statsQuery': process.stats_query,
             'peerQuery': process.peer_query,
+            'heartbeat': process.heartbeat,
             '__peerResults__': process.peer_results,
         }
 
         processor = processors.get(type)
         if processor:
             out_envelope = processor(self, in_envelope)
-            self.publish(out_envelope)
+            if out_envelope:
+                self.publish(out_envelope)
         else:
             print "Envelope not recognised: %s" % in_envelope.type
 

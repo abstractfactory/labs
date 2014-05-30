@@ -3,7 +3,6 @@ from __future__ import absolute_import
 import sys
 import zmq
 import time
-import random
 
 # Local library
 import lib
@@ -11,25 +10,6 @@ import protocol
 # import service
 
 context = zmq.Context()
-
-CORES = random.randint(1, 12)
-MEMORY = random.randrange(0.0, 16000.0)
-
-
-def local_stats():
-    """Return stats from machine"""
-    available_cores = CORES - random.randint(1, 12)
-    if available_cores <= 0:
-        available_cores = 0
-
-    available_memory = MEMORY - random.randrange(0.0, 16000.0)
-    if available_memory <= 0:
-        available_memory = 0
-
-    return {'cores': CORES,
-            'available_cores': available_cores,
-            'memory': MEMORY,
-            'available_memory': available_memory}
 
 
 class Peer(object):
@@ -193,39 +173,41 @@ class Peer(object):
             |_|
 
             """
-            envelope.payload.pop('type')
             query = protocol.Query.from_dict(envelope.payload)
 
             self.display_remote_message("- %s is asking about you"
                                         % query.questioner)
 
             if query.name == 'stats':
-
-                services = []
-                for service in self.services:
-                    services.append(service.__name__)
-
-                statistics = {'mood': 'happy',
-                              'services': services}
-                statistics.update(local_stats())
-
-                # construct results
-                results = {
-                    'peer': self.name,
-                    'stats': statistics,
-                    'questioner': query.questioner,
-                }
-
-                # Return results in a peerResults envelope
+                statistics = lib.local_stats()
+                results = query.reply(peer=self.name,
+                                      payload=statistics)
                 envelope = protocol.Envelope(payload=results,
                                              type='__peerResults__')
                 self.send(envelope)
 
-            elif query.name == 'sing':
-                self.display_local_message("Singing")
+            elif query.name == 'services':
+                services = [service.__name__ for service in self.services]
+                results = query.reply(peer=self.name,
+                                      payload=services)
+
+                envelope = protocol.Envelope(payload=results,
+                                             type='__peerResults__')
+                self.send(envelope)
+
+            elif query.name == 'mood':
+                results = query.reply(peer=self.name,
+                                      payload='happy')
+                envelope = protocol.Envelope(payload=results,
+                                             type='__peerResults__')
+                self.send(envelope)
 
             else:
-                self.display_local_message("Got an odd query: %s" % query)
+                results = query.reply(peer=self.name,
+                                      payload='invalid')
+                envelope = protocol.Envelope(payload=results,
+                                             type='__peerResults__')
+                self.send(envelope)
 
         elif type == '__queryResults__':
             """Display results of query (computer-to-computer)
@@ -251,20 +233,41 @@ class Peer(object):
             """
 
             results = envelope.payload
-            print "__queryResults__: displaying results: %s" % results
+            results = protocol.QueryResults.from_dict(results)
 
-            type = results['type']
+            if results.name == 'stats':
+                stats = results.payload
 
-            if type == 'stats':
-                print "Received: %s" % results
-                stats = results['stats']
-
-                message = "\n%s <Statistics>:\n" % results['peer'].title()
+                message = "\n%s <Statistics>:\n" % results.peer.title()
                 message += lib.pformat(stats, level=1, title=True)
                 self.display_remote_message(message)
+
+            elif results.name == 'mood':
+                self.display_remote_message(results.payload)
+
+            elif results.name == 'services':
+                services = results.payload
+                if not services:
+                    message = ("%s did not provide any services."
+                               % results.peer.title())
+                else:
+                    message = "\n%s <Services>:\n" % results.peer.title()
+                    for service in services:
+                        title = service.replace("_", " ")
+                        title = title.title()
+                        message += "    %s (%s)\n" % (title, service)
+                    # message += lib.pformat(services, level=1, title=True)
+                self.display_remote_message(message)
+
             else:
-                self.display_remote_message("Got results, but don't know "
-                                            "what for?: %s" % results)
+                if results.payload == 'invalid':
+                    self.display_remote_message(
+                        "%s didn't know how to answer '%s'"
+                        % (results.peer.title(), results.name))
+                else:
+                    self.display_remote_message(
+                        "Got results, but don't know "
+                        "what for?: %s" % results.name)
 
         else:
             self.display_remote_message("Message not recognised: %r"
@@ -315,12 +318,11 @@ class Peer(object):
             self.send(invite)
 
         elif command == 'order':
-            """Order a coffee"""
+            """Place an order"""
             order = args
 
             if not order:
-                print "- Order what?"
-                return
+                return self.display_local_message("- Order what?")
 
             envelope = protocol.Envelope(payload=order,
                                          type='orderPlacement')
@@ -355,7 +357,7 @@ class Peer(object):
                 questioneer = self.name
                 query = protocol.Query(name=name,
                                        questioner=questioneer,
-                                       args=args[2:])
+                                       payload=args[2:])
 
                 envelope = protocol.Envelope(payload=(peers, query.to_dict()),
                                              type='peerQuery')
@@ -365,11 +367,13 @@ class Peer(object):
                 self.display_local_message("Query not formatted correctly")
 
         elif command == 'peers':
+            """Query all or invited peers"""
             query = args[0] if args else None
 
             if query == 'all':
                 allpeers = protocol.Envelope(type='peersQuery')
                 self.send(allpeers)
+
             else:
                 peers = self.peers
                 message = 'Invited peers:'
@@ -396,37 +400,12 @@ class Peer(object):
                                               type='stateQuery')
             self.send(state_request)
 
-        elif command == 'stats':
-            """Peer queries peer
-
-            PEER A
-             _             SWARM
-            |\|   query     _
-            |\|===========>| |
-            |\|            | |             PEER B
-            |\|            | |    query     _
-            |\|            | |------------>| |
-            |\|            | |             | |
-            |\|            | |             | |
-            |\|            | |             | |
-            |\|            | |             | |
-            |\|            | |    stats    | |
-            |\|            | |<------------|_|
-            |\|            | |
-            |\|   stats    | |
-            |\|<-----------|_|
-            |_|
-
-            """
-
-            peers = args
-            if peers:
-                query = protocol.Query('stats', questioner=self.name)
-                envelope = protocol.Envelope(payload=(peers, query.to_dict()),
-                                             type='statsQuery')
-                self.send(envelope)
-            else:
-                self.display_local_message("Which peer?")
-
         else:
             print "%r not a valid command" % command
+
+    def heartbeat(self):
+        envelope = protocol.Envelope(author=self.name,
+                                     type='heartbeat')
+        while True:
+            self.send(envelope)
+            time.sleep(2)

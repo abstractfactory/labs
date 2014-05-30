@@ -1,4 +1,5 @@
 import os
+import random
 import argparse
 import threading
 import subprocess
@@ -151,6 +152,26 @@ def pprint(obj,
                   title=title,
                   separator=separator,
                   level=level)
+
+
+CORES = random.randint(1, 12)
+MEMORY = random.randrange(0.0, 16000.0)
+
+
+def local_stats():
+    """Return stats from machine"""
+    available_cores = CORES - random.randint(1, 12)
+    if available_cores <= 0:
+        available_cores = 0
+
+    available_memory = MEMORY - random.randrange(0.0, 16000.0)
+    if available_memory <= 0:
+        available_memory = 0
+
+    return {'cores': CORES,
+            'available_cores': available_cores,
+            'memory': MEMORY,
+            'available_memory': available_memory}
 
 
 if __name__ == '__main__':
