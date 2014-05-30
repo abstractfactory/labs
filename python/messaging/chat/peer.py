@@ -99,6 +99,20 @@ class Peer(object):
             self.display_remote_message("%s" % result)
 
         elif type == 'receipt':
+            """A receipt was returned from SWARM order.
+
+            PEER A
+             _             SWARM
+            | |   order     _
+            | |----------->|/|
+            | |            |/|
+            | |            |/|
+            | |  receipt   |/|
+            | |<===========|_|
+            |_|
+
+            """
+
             order = protocol.Order.from_dict(envelope.payload)
             dic = order.to_dict()
 
@@ -236,6 +250,15 @@ class Peer(object):
             results = protocol.QueryResults.from_dict(results)
 
             if results.name == 'stats':
+                """
+                Display statistics returned from query
+
+                CPU (ghz)
+                CORES (n)
+                MEMORY (mb)
+
+                """
+
                 stats = results.payload
 
                 message = "\n%s <Statistics>:\n" % results.peer.title()
@@ -243,6 +266,13 @@ class Peer(object):
                 self.display_remote_message(message)
 
             elif results.name == 'mood':
+                """
+                    _     _
+                   |_|   |_|
+                  \_________/
+
+                """
+
                 self.display_remote_message(results.payload)
 
             elif results.name == 'services':
@@ -256,7 +286,6 @@ class Peer(object):
                         title = service.replace("_", " ")
                         title = title.title()
                         message += "    %s (%s)\n" % (title, service)
-                    # message += lib.pformat(services, level=1, title=True)
                 self.display_remote_message(message)
 
             else:
@@ -266,8 +295,9 @@ class Peer(object):
                         % (results.peer.title(), results.name))
                 else:
                     self.display_remote_message(
-                        "Got results, but don't know "
-                        "what for?: %s" % results.name)
+                        "Got results for {query} from {peer}, but don't know "
+                        "what for.".format(query=results.name,
+                                           peer=results.peer))
 
         else:
             self.display_remote_message("Message not recognised: %r"
@@ -318,7 +348,23 @@ class Peer(object):
             self.send(invite)
 
         elif command == 'order':
-            """Place an order"""
+            """Place an order to the swarm
+
+            PEER A
+             _             SWARM
+            |\|   order     _
+            |\|===========>| |
+            |\|            | |
+            |\|            | |
+            |\|     id     | |
+            |\|<-----------|_|
+            |_|
+
+            Note: This will be delegated to dedicated WORKER instances.
+            In the case of COFFEE, a BARISTA will provide such a service.
+
+            """
+
             order = args
 
             if not order:
