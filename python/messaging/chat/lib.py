@@ -11,7 +11,8 @@ class DynamicRegistry(type):
         super(DynamicRegistry, cls).__init__(name, bases, nmspc)
         if not hasattr(cls, 'registry'):
             cls.registry = dict()
-        cls.registry[cls.__name__.lower()] = cls
+        key = getattr(cls, 'key', cls.__name__.lower())
+        cls.registry[key] = cls
 
 
 def spawn(func, **kwargs):

@@ -2,12 +2,12 @@ from __future__ import absolute_import
 
 # standard library
 import time
+import json
 
 # local library
-import lib
-import json
-import process
-import protocol
+import chat.lib
+import chat.protocol
+import chat.mediator.swarm
 
 # vendor dependency
 import zmq
@@ -21,6 +21,8 @@ class Swarm(object):
     orders = dict()  # Keep track of all orders
     heartbeats = dict()  # Keep your ear close to the peer's chests
 
+    KEEP_ALIVE = 4  # seconds before peers are considered dead
+
     def __init__(self):
         pull = context.socket(zmq.PULL)  # Incoming messages
         pull.bind("tcp://*:5555")
@@ -31,7 +33,8 @@ class Swarm(object):
         self.pull = pull
         self.pub = pub
 
-        lib.spawn(self.listen, name='listen')
+        chat.lib.spawn(self.listen, name='listen')
+        chat.lib.spawn(self.keepalive, name='keepalive')
 
     def listen(self):
         """
@@ -47,8 +50,27 @@ class Swarm(object):
 
         while True:
             message = self.pull.recv_json()
-            envelope = protocol.Envelope.from_dict(message)
+            envelope = chat.protocol.Envelope.from_dict(message)
             self.router(envelope)
+
+    def keepalive(self):
+        """Scan `self.heartbeats` for dead connections"""
+        while True:
+            time.sleep(self.KEEP_ALIVE)
+
+            dead = []
+            for client, last_seen in self.heartbeats.iteritems():
+
+                # If peer is unresponsive for over self.KEEP_ALIVE
+                # seconds, consider him disconnected and clear
+                # out his locker.
+                if last_seen < (time.time() - self.KEEP_ALIVE):
+                    dead.append(client)
+
+            for d in dead:
+                print "%s was disconnected" % d
+                self.heartbeats.pop(d, None)
+                self.letters.pop(d, None)
 
     def publish(self, envelope):
         """Physically publish `envelope`"""
@@ -62,11 +84,11 @@ class Swarm(object):
         self.pub.send_multipart(['log', marshal])
 
     def router(self, in_envelope):
-        """Take incoming envelope, process it, and send one back out"""
+        """Take incoming envelope, chat.process it, and send one back out"""
 
         in_envelope.trace += ['Swarm.router']
 
-        log = protocol.Log(
+        log = chat.protocol.Log(
             name='Swarm.router',
             author=in_envelope.author,
             level='info',
@@ -78,44 +100,9 @@ class Swarm(object):
 
         type = in_envelope.type
 
-        processors = {
-            'letter': process.letter,
-            'invitation': process.invitation,
-            'orderPlacement': process.order_placement,
-            'stateQuery': process.state_query,
-            'peersQuery': process.peers_query,
-            'statsQuery': process.stats_query,
-            'peerQuery': process.peer_query,
-            'heartbeat': process.heartbeat,
-            '__peerResults__': process.peer_results,
-        }
+        factory = chat.mediator.swarm.Factory()
 
-        processor = processors.get(type)
-        if processor:
-            out_envelope = processor(self, in_envelope)
-            out_envelope.trace += ['Swarm.router']
-
-            if out_envelope:
-                self.publish(out_envelope)
-
-                log = protocol.Log(
-                    name='Swarm.router',
-                    author=out_envelope.author,
-                    level='info',
-                    string='{} was sent'.format(out_envelope.type),
-                    trace=out_envelope.trace)
-
-                self.log(log)
-        else:
-            print "Envelope not recognised: {}".format(type)
-
-
-if __name__ == '__main__':
-    swarm = Swarm()
-
-    while True:
         try:
-            time.sleep(1)
-        except KeyboardInterrupt:
-            print "\nGood bye"
-            break
+            factory.mediate(type, self, in_envelope)
+        except ValueError as e:
+            print e

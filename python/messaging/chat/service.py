@@ -1,7 +1,10 @@
 from __future__ import absolute_import
 
+# standard library
 import time
-import lib
+
+# local library
+import chat.lib
 
 orders = {}
 
@@ -45,7 +48,7 @@ def order_coffee(order):
     order.status = 'ordered'
     order.id = order_id
 
-    lib.spawn(make_coffee, args=[order], name='order: %s' % order_id)
+    chat.lib.spawn(make_coffee, args=[order], name='order: %s' % order_id)
 
     print "Id: %s" % order_id
 

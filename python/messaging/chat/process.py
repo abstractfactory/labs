@@ -4,7 +4,7 @@ from __future__ import absolute_import
 
 # standard library
 import sys
-# import time
+import time
 import traceback
 
 # local library
@@ -361,3 +361,4 @@ def peer_results(self, in_envelope):
 
 def heartbeat(self, in_envelope):
     """Update peer status"""
+    self.heartbeats[in_envelope.author] = time.time()
