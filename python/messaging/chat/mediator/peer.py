@@ -34,17 +34,7 @@ class Factory(object):
         pass
 
     def send(self, receiver, envelope):
-        self.send(receiver, envelope)
-
-        name = "%s.%s" % (__name__, type(self).__name__)
-        log = chat.protocol.Log(
-            name=name,
-            author=envelope.author,
-            level='info',
-            string='{} was sent'.format(envelope.type),
-            trace=envelope.trace)
-
-        receiver.log(log)
+        receiver.send(envelope)
 
 
 class Letter(Factory):

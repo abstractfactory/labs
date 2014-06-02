@@ -27,7 +27,6 @@ class Envelope(object):
 
     @classmethod
     def from_dict(cls, dic):
-        # dic.pop('type', None)
         envelope = cls(**dic)
         return envelope
 
@@ -139,12 +138,10 @@ class QueryResults(AbstractItem):
 
     @classmethod
     def from_dict(cls, dic):
-        # dic = super(QueryResults, cls).from_dict(dic)
         return cls(name=dic['name'],
                    peer=dic['peer'],
                    questioner=dic['questioner'],
                    payload=dic['payload'])
-        # return cls(**dic)
 
     def to_dict(self):
         dic = super(QueryResults, self).to_dict()

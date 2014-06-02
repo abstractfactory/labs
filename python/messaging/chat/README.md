@@ -7,6 +7,8 @@ An illustration of a *human-to-human* instant messaging application, made to exp
 
 > Instant messaging for Apps - http://jaxenter.com/an-introduction-to-scriptable-sockets-with-zeromq-49167.html
 
+### [Video walkthrough](video/chat.logger.m4v)
+
 # Architecture
 
 ![](images/flow.png)
@@ -18,6 +20,7 @@ Peers communicate via a broker called Swarm that delegates requests to one or mo
 	"recipients": ["markus", "nikki"]
 }
 ```
+
 
 ### Message distribution
 

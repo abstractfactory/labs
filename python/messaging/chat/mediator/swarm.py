@@ -95,7 +95,7 @@ class StateQuery(Factory):
 
 class PeersQuery(Factory):
     def execute(self, receiver, envelope):
-        super(PeerQuery, self).execute(receiver, envelope)
+        super(PeersQuery, self).execute(receiver, envelope)
 
         peers = list(receiver.peers)
         envelope = chat.protocol.Envelope(author=envelope.author,
