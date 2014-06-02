@@ -5,6 +5,15 @@ import threading
 import subprocess
 
 
+class DynamicRegistry(type):
+    """Meta-class for dynamically registering subclasses"""
+    def __init__(cls, name, bases, nmspc):
+        super(DynamicRegistry, cls).__init__(name, bases, nmspc)
+        if not hasattr(cls, 'registry'):
+            cls.registry = dict()
+        cls.registry[cls.__name__.lower()] = cls
+
+
 def spawn(func, **kwargs):
     thread = threading.Thread(target=func, **kwargs)
     thread.daemon = True

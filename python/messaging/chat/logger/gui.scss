@@ -1,0 +1,61 @@
+
+$dark:      rgb(25, 25, 25);
+$mid:       rgb(50, 50, 50);
+$bright:    rgb(220, 220, 220);
+
+$red:       hsl(0%, 50%, 50%);
+$pink:      hsl(80%, 50%, 50%);
+$orange:    hsl(20%, 50%, 50%);
+$blue:      hsl(60%, 50%, 40%);
+$green: 	hsl(70%, 50%, 50%);
+$highlight: hsl(35%, 50%, 80%);
+
+QWidget {
+	/*background-color: transparent;*/
+	font-family: Consolas;
+}
+
+QLabel[tag='true'] {
+	padding: 2px;
+	border-radius: 2px;
+
+}
+
+Application {
+	/*background-color: $mid;*/
+
+	#Author {background-color: $pink}
+	#Name {background-color: $blue;}
+	#Time {background-color: $orange;}
+
+	#Level {
+		background-color: $red;
+		&[level='info'] {background-color: $green}
+		&[level='warning'] {background-color: $red}
+	}
+
+
+
+	Entry {
+		&:hover {
+			background-color: $bright;
+		}
+
+		#Box {
+			background-color: $blue;
+
+			QLabel {
+				padding: 5px;
+				font-size: 8pt;
+				color: darken($blue, 30%);
+			}
+		}
+
+		#Line {
+			background-color: gray;
+			min-height: 1px;
+			max-height: 1px;
+			min-width: 30px;
+		}
+	}
+}

@@ -6,42 +6,51 @@ class Envelope(object):
     def __str__(self):
         return "(%s: %s)" % (self.author, self.payload)
 
-    def __init__(self, payload=None, author=None, recipients=None, type=None):
+    def __init__(self,
+                 payload=None,
+                 author=None,
+                 timestamp=None,
+                 recipients=None,
+                 type=None,
+                 trace=None):
+
         self.payload = payload
         self.author = author
         self.recipients = recipients
-        self.timestamp = time.time()
+        self.timestamp = timestamp or time.time()
         self.type = type
         self.return_address = None
+        self.trace = trace or list()
 
         if hasattr(payload, 'to_dict'):
             self.payload = payload.to_dict()
 
     @classmethod
-    def from_dict(cls, message):
-        envelope = cls(author=message['author'],
-                       payload=message['payload'],
-                       recipients=message['recipients'],
-                       type=message['type'])
+    def from_dict(cls, dic):
+        # dic.pop('type', None)
+        envelope = cls(**dic)
         return envelope
 
     def to_dict(self):
+        payload = self.payload
+        if hasattr(payload, 'to_dict'):
+            payload = payload.to_dict()
+
         return {
             'author': self.author,
             'recipients': self.recipients,
-            'payload': self.payload,
+            'payload': payload,
             'timestamp': self.timestamp,
+            'trace': self.trace,
             'type': self.type
         }
 
-    # def reply(self, author, payload):
-    #     return Envelope(author=author,
-    #                     payload=payload,
-    #                     recipients=[self.author],
-    #                     type=self.type)
-
 
 class AbstractItem(object):
+    @property
+    def type(self):
+        return type(self).__name__.lower()
+
     @classmethod
     def from_dict(cls, dic):
         dic.pop('type', None)
@@ -49,7 +58,46 @@ class AbstractItem(object):
 
     def to_dict(self):
         return {
-            'type': type(self).__name__.lower()
+            'type': self.type
+        }
+
+
+class Log(AbstractItem):
+    def __init__(self,
+                 name=None,
+                 author=None,
+                 timestamp=None,
+                 level=None,
+                 string=None,
+                 trace=None,
+                 envelope=None):
+
+        self.name = name
+        self.author = author
+        self.timestamp = timestamp or time.time()
+        self.level = level
+        self.string = string
+        self.trace = trace or list()
+        self.envelope = envelope
+
+        if hasattr(envelope, 'to_dict'):
+            self.envelope = envelope.to_dict()
+
+    @classmethod
+    def from_dict(cls, dic):
+        dic = super(Log, cls).from_dict(dic)
+        return cls(**dic)
+
+    def to_dict(self):
+        return {
+            'name': self.name,
+            'author': self.author,
+            'timestamp': self.timestamp,
+            'level': self.level,
+            'string': self.string,
+            'trace': self.trace,
+            'envelope': self.envelope,
+            'type': self.type
         }
 
 
@@ -58,6 +106,9 @@ class Query(AbstractItem):
         self.name = name
         self.questioner = questioner
         self.payload = payload
+
+        if hasattr(payload, 'to_dict'):
+            self.payload = payload.to_dict()
 
     @classmethod
     def from_dict(cls, dic):
@@ -88,8 +139,12 @@ class QueryResults(AbstractItem):
 
     @classmethod
     def from_dict(cls, dic):
-        dic = super(QueryResults, cls).from_dict(dic)
-        return cls(**dic)
+        # dic = super(QueryResults, cls).from_dict(dic)
+        return cls(name=dic['name'],
+                   peer=dic['peer'],
+                   questioner=dic['questioner'],
+                   payload=dic['payload'])
+        # return cls(**dic)
 
     def to_dict(self):
         dic = super(QueryResults, self).to_dict()

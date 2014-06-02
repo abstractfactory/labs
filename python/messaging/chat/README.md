@@ -97,7 +97,7 @@ Project is developed by the following requirements; strike-through meaning "done
 * `REQ20` `WORKER` may limit the amount of concurrent `TASKS`
 * `REQ21` `WORKER` may signal statistics
 * `REQ22` `LOGGER` maintains a record of all activitiy
-* ~~`REQ23`~~ `PEER` may receive `LETTER` from previously unknown `PEER`
+* ~~`REQ23`~~ `PEER` may receive `LETTER` from out-of-the-blue `PEER`
 
 # Requirement Definitions
 
@@ -171,14 +171,16 @@ In this scenario, the `SWARM` handles queuing of requests until a `WORKER` is av
 #### Advanced signalling of availability
 
 In cases where the request is more involved, a query may involve additional parameters:
-	- `CORES` required
-	- `MEMORY` required
-	- `SOFTWARE` required
-	- `PRIORITY` of request
+
+- `CORES` required
+- `MEMORY` required
+- `SOFTWARE` required
+- `PRIORITY` of request
 
 To which availability may be returned with additional data:
-	- Tasks remaining
-	- Estimated time until available
+
+- Tasks remaining
+- Estimated time until available
 
 In the case of multiple tasks already being present in `WORKER`, `PRIORITY` will determine in which position the new `TASK` will be placed.
 
@@ -188,4 +190,4 @@ In the case of multiple tasks already being present in `WORKER`, `PRIORITY` will
 
 #### Statistics
 
-A `WORKER` may return available CPU and `MEMORY`.
+A `WORKER` may return available `CPU` and `MEMORY` et. al.

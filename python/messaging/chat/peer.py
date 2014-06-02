@@ -1,13 +1,18 @@
 from __future__ import absolute_import
 
+# standard library
 import sys
-import zmq
+import json
 import time
 
-# Local library
-import lib
-import protocol
-import service
+# dependencies
+import zmq
+
+# local library
+import chat.lib
+import chat.service
+import chat.protocol
+import chat.mediator.peer
 
 context = zmq.Context()
 
@@ -15,10 +20,19 @@ context = zmq.Context()
 class Peer(object):
     """Peer API"""
 
-    # the format is {public name: func}
-    services = {'add': service.add}
+    services = {'add': chat.service.add}
 
-    def __init__(self, name='unknown', peers=None, services=None):
+    def __init__(self,
+                 name='unknown',
+                 peers=None,
+                 services=None):
+        """
+        Arguments:
+            name(str): Name of author
+            peers(list): Authors to chat with
+            services(list): Exposed services
+
+        """
         self.name = name
         self.peers = set()  # Filled up below
 
@@ -26,13 +40,13 @@ class Peer(object):
         push.connect("tcp://localhost:5555")
 
         sub = context.socket(zmq.SUB)
-        sub.setsockopt(zmq.SUBSCRIBE, '')
+        sub.setsockopt(zmq.SUBSCRIBE, 'default')
         sub.connect("tcp://localhost:5556")
 
         self.push = push
         self.sub = sub
 
-        lib.spawn(self.listen, name='listen')
+        chat.lib.spawn(self.listen, name='listen')
 
         # Catchup
         self.route_command('state')
@@ -69,8 +83,9 @@ class Peer(object):
         """
 
         while True:
-            message = self.sub.recv_json()
-            envelope = protocol.Envelope.from_dict(message)
+            header, body = self.sub.recv_multipart()
+            message = json.loads(body)
+            envelope = chat.protocol.Envelope.from_dict(message)
             self.processor(envelope)
 
     def processor(self, envelope):
@@ -86,6 +101,12 @@ class Peer(object):
             return
 
         type = envelope.type
+
+        # factory = chat.mediator.peer.Factory()
+
+        # try:
+        #     factory.process(type, self, envelope)
+        # except ValueError:
 
         if type == 'letter':
             """Letter was sent from another PEER
@@ -110,7 +131,7 @@ class Peer(object):
                 message = self.formatter(envelope)
                 self.display_remote_message(message)
 
-        elif type == 'receipt':
+        elif type == 'orderReceipt':
             """A receipt was returned from SWARM order. (event)
 
             PEER A
@@ -128,15 +149,15 @@ class Peer(object):
 
             """
 
-            order = protocol.Order.from_dict(envelope.payload)
+            order = chat.protocol.Order.from_dict(envelope.payload)
             dic = order.to_dict()
 
             message = "Your receipt:\n"
-            message += lib.pformat(dic, level=1)
+            message += chat.lib.pformat(dic, level=1)
 
             self.display_remote_message(message)
 
-        elif type == 'status':
+        elif type == 'orderStatus':
             """Order status was returned from SWARM order(s)
 
             PEER A
@@ -198,7 +219,7 @@ class Peer(object):
 
             for timestamp in sorted(messages):
                 message = messages[timestamp]
-                envelope = protocol.Envelope.from_dict(message)
+                envelope = chat.protocol.Envelope.from_dict(message)
 
                 if self.name in envelope.recipients:
                     message = self.formatter(envelope)
@@ -206,7 +227,7 @@ class Peer(object):
                     time.sleep(0.01)
 
         elif type == 'peers':
-            """Order status was returned from SWARM order(s)
+            """All peers was returned from swarm
 
             PEER A
              _             SWARM
@@ -214,7 +235,7 @@ class Peer(object):
             | |----------->|/|
             | |            |/|
             | |            |/|
-            | |   status   |/|
+            | |   peers    |/|
             | |<===========|_|
             |_|
 
@@ -228,6 +249,22 @@ class Peer(object):
             self.display_remote_message(message)
 
         elif type == 'error':
+            """An error was received. (even)
+
+            PEER A
+             _             SWARM
+            | |             _
+            | |            |/|
+            | |            |/|
+            | |            |/|
+            | |    error   |/|
+            | |<===========|_|
+            |_|
+
+            Note: errors are received asynchronously
+
+            """
+
             error = envelope.payload
             self.display_remote_message(str(error))
 
@@ -246,34 +283,66 @@ class Peer(object):
 
             """
 
-            query = protocol.Query.from_dict(envelope.payload)
+            query = chat.protocol.Query.from_dict(envelope.payload)
 
             self.display_remote_message("- %s is asking about you"
                                         % query.questioner)
 
             if query.name == 'stats':
                 """Swarm queries statistics"""
-                statistics = lib.local_stats()
+                statistics = chat.lib.local_stats()
                 results = query.reply(peer=self.name,
                                       payload=statistics)
-                envelope = protocol.Envelope(payload=results,
-                                             type='__peerResults__')
+                trace = envelope.trace
+                trace.append('Peer.processor<stats>')
+                envelope = chat.protocol.Envelope(payload=results,
+                                                  type='__peerResults__',
+                                                  trace=trace)
                 self.send(envelope)
 
             elif query.name == 'mood':
                 """Swarm queries mood"""
                 results = query.reply(peer=self.name,
                                       payload='happy')
-                envelope = protocol.Envelope(payload=results,
-                                             type='__peerResults__')
+                trace = envelope.trace
+                trace.append('Peer.processor<mood>')
+                envelope = chat.protocol.Envelope(payload=results,
+                                                  type='__peerResults__',
+                                                  trace=trace)
+                self.send(envelope)
+
+            elif query.name == 'service':
+                """Perform service"""
+                results = query.reply(peer=self.name,
+                                      payload='Performed service')
+                trace = envelope.trace
+                trace.append('Peer.processor<service>')
+                envelope = chat.protocol.Envelope(payload=results,
+                                                  type='__peerResults__',
+                                                  trace=trace)
+                self.send(envelope)
+
+            elif query.name == 'services':
+                results = query.reply(peer=self.name,
+                                      payload=self.services.keys())
+                trace = envelope.trace
+                trace.append('Peer.processor<services>')
+                envelope = chat.protocol.Envelope(payload=results,
+                                                  type='__peerResults__',
+                                                  trace=trace)
                 self.send(envelope)
 
             else:
                 """Swarm queries something unknown"""
                 results = query.reply(peer=self.name,
-                                      payload='invalid')
-                envelope = protocol.Envelope(payload=results,
-                                             type='__peerResults__')
+                                      payload=query.name)
+                results.name = 'invalid'
+
+                trace = envelope.trace
+                trace.append('Peer.processor<unknown>')
+                envelope = chat.protocol.Envelope(payload=results,
+                                                  type='__peerResults__',
+                                                  trace=trace)
                 self.send(envelope)
 
         elif type == '__queryResults__':
@@ -292,7 +361,7 @@ class Peer(object):
             """
 
             results = envelope.payload
-            results = protocol.QueryResults.from_dict(results)
+            results = chat.protocol.QueryResults.from_dict(results)
 
             if results.name == 'stats':
                 """
@@ -307,7 +376,7 @@ class Peer(object):
                 stats = results.payload
 
                 message = "\n%s <Statistics>:\n" % results.peer.title()
-                message += lib.pformat(stats, level=1, title=True)
+                message += chat.lib.pformat(stats, level=1, title=True)
                 self.display_remote_message(message)
 
             elif results.name == 'mood':
@@ -320,29 +389,35 @@ class Peer(object):
 
                 self.display_remote_message(results.payload)
 
+            elif results.name == 'service':
+                self.display_remote_message(results.payload)
+
             elif results.name == 'services':
                 services = results.payload
+
                 if not services:
                     message = ("%s did not provide any services."
                                % results.peer.title())
+
                 else:
                     message = "\n%s <Services>:\n" % results.peer.title()
                     for service_ in services:
                         title = service_.replace("_", " ")
                         title = title.title()
                         message += "    %s (%s)\n" % (title, service_)
+
                 self.display_remote_message(message)
 
+            elif results.name == 'invalid':
+                self.display_remote_message(
+                    "%s didn't know how to answer '%s'"
+                    % (results.peer.title(), results.payload))
+
             else:
-                if results.payload == 'invalid':
-                    self.display_remote_message(
-                        "%s didn't know how to answer '%s'"
-                        % (results.peer.title(), results.name))
-                else:
-                    self.display_remote_message(
-                        "Got results for {query} from {peer}, but don't know "
-                        "what for.".format(query=results.name,
-                                           peer=results.peer))
+                self.display_remote_message(
+                    "Got results for {query} from {peer}, but don't know "
+                    "what for.".format(query=results.name,
+                                       peer=results.peer))
 
         else:
             self.display_remote_message("Message not recognised: %r"
@@ -378,18 +453,25 @@ class Peer(object):
         if command == 'say':
             instant_message = " ".join(args)
             peers = list(self.peers)
-            letter = protocol.Envelope(payload=instant_message,
-                                       type='letter',
-                                       recipients=peers)
+            letter = chat.protocol.Envelope(
+                payload=instant_message,
+                type='letter',
+                recipients=peers,
+                trace=['Peer.route_command<say>'])
             self.send(letter)
+
+        elif command == 'wait':
+            time.sleep(args[0])
 
         elif command == 'invite':
             peers = args
             self.peers.update(peers)
 
             # Inform swarm that peer is listening
-            invite = protocol.Envelope(payload=peers,
-                                       type='invitation')
+            invite = chat.protocol.Envelope(
+                payload=peers,
+                type='invitation',
+                trace=['Peer.route_comamnd<invite>'])
             self.send(invite)
 
         elif command == 'order':
@@ -415,8 +497,10 @@ class Peer(object):
             if not order:
                 return self.display_local_message("- Order what?")
 
-            envelope = protocol.Envelope(payload=order,
-                                         type='orderPlacement')
+            envelope = chat.protocol.Envelope(
+                payload=order,
+                type='orderPlacement',
+                trace=['Peer.route_command<order>'])
             self.send(envelope)
 
         elif command == 'peer':
@@ -440,12 +524,14 @@ class Peer(object):
                 peers = [args[0]]
                 name = args[1]
                 questioneer = self.name
-                query = protocol.Query(name=name,
-                                       questioner=questioneer,
-                                       payload=args[2:])
+                query = chat.protocol.Query(name=name,
+                                            questioner=questioneer,
+                                            payload=args[2:])
 
-                envelope = protocol.Envelope(payload=(peers, query.to_dict()),
-                                             type='peerQuery')
+                envelope = chat.protocol.Envelope(
+                    payload=(peers, query.to_dict()),
+                    type='peerQuery',
+                    trace=['Peer.route_command<peer>'])
                 self.send(envelope)
 
             except IndexError:
@@ -456,7 +542,7 @@ class Peer(object):
             query = args[0] if args else None
 
             if query == 'all':
-                allpeers = protocol.Envelope(type='peersQuery')
+                allpeers = chat.protocol.Envelope(type='peersQuery')
                 self.send(allpeers)
 
             else:
@@ -468,29 +554,21 @@ class Peer(object):
 
                 self.display_local_message(message)
 
-        # elif command == 'services':
-        #     """Query peer for services"""
-        #     peer = args[0] if args else None
-
-        #     if peer:
-        #         envelope = protocol.Envelope(payload=peer,
-        #                                      type='servicesQuery')
-        #         self.send(envelope)
-        #     else:
-        #         self.display_local_message("Who's services?")
-
         elif command == 'state':
             peers = args
-            state_request = protocol.Envelope(payload=peers,
-                                              type='stateQuery')
+            state_request = chat.protocol.Envelope(
+                payload=peers,
+                type='stateQuery',
+                trace=['Peer.route_command<state>'])
+
             self.send(state_request)
 
         else:
             print "%r not a valid command" % command
 
     def heartbeat(self):
-        envelope = protocol.Envelope(author=self.name,
-                                     type='heartbeat')
+        envelope = chat.protocol.Envelope(author=self.name,
+                                          type='heartbeat')
         while True:
             self.send(envelope)
             time.sleep(2)

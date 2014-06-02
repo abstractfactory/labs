@@ -4,7 +4,7 @@ from __future__ import absolute_import
 
 # standard library
 import sys
-import time
+# import time
 import traceback
 
 # local library
@@ -14,7 +14,9 @@ import lib
 
 
 def letter(self, in_envelope):
-    letter = in_envelope.payload
+    in_envelope.trace += ['process.letter']
+
+    # letter = in_envelope.payload
 
     if not in_envelope.author in self.letters:
         self.letters[in_envelope.author] = {}
@@ -22,13 +24,9 @@ def letter(self, in_envelope):
     # Maintain all original authors
     self.peers.add(in_envelope.author)
 
-    gmtime = time.gmtime(in_envelope.timestamp)
-    asctime = time.asctime(gmtime)
-    print "On %s, %s said: %s" % (asctime,
-                                  in_envelope.author,
-                                  letter)
-    dic = in_envelope.to_dict()
-    self.letters[in_envelope.author][in_envelope.timestamp] = dic
+    author = in_envelope.author
+    timestamp = in_envelope.timestamp
+    self.letters[author][timestamp] = in_envelope.to_dict()
 
     return in_envelope
 
@@ -45,37 +43,17 @@ def state_query(self, in_envelope):
                                      payload=threads,
                                      recipients=[in_envelope.author],
                                      type='state')
-    return out_envelope
 
+    # log = protocol.Log(
+    #     name='process.state_query',
+    #     author=in_envelope.author,
+    #     level='info',
+    #     string='{} queried state'.format(in_envelope.author),
+    #     trace=in_envelope.trace + ['process.state_query'],
+    #     envelope=in_envelope)
 
-def peer_query(self, in_envelope):
-    """Swarm queries peer
+    # self.log(log)
 
-    PEER A
-     _             SWARM
-    | |   query     _
-    | |----------->|\|
-    | |            |\|             PEER B
-    | |            |\|    query     _
-    | |            |\|============>| |
-    | |            |\|             | |
-    | |            |\|             | |
-    | |            |\|             | |
-    | |            |\|             | |
-    | |            |\|    stats    | |
-    | |            |\|<------------|_|
-    | |            |\|
-    | |   stats    |\|
-    | |<-----------|_|
-    |_|
-
-    """
-
-    peers, query = in_envelope.payload
-    out_envelope = protocol.Envelope(author=in_envelope.author,
-                                     payload=query,
-                                     recipients=peers,
-                                     type='__swarmQuery__')
     return out_envelope
 
 
@@ -89,11 +67,14 @@ def peers_query(self, in_envelope):
 
 
 def invitation(self, in_envelope):
+    in_envelope.trace += ['process.invitation']
+
     invitation = in_envelope.payload
     out_envelope = protocol.Envelope(author=in_envelope.author,
                                      payload=invitation,
                                      recipients=invitation,
-                                     type='invitation')
+                                     type='invitation',
+                                     trace=in_envelope.trace)
     print "%s inviting %s" % (out_envelope.author, invitation)
 
     self.peers.update(invitation)
@@ -154,7 +135,7 @@ def order_placement(self, in_envelope):
                 statuses[order] = 'no order found'
 
         out_envelope.payload = statuses
-        out_envelope.type = 'status'
+        out_envelope.type = 'orderStatus'
 
     elif item == 'coffee':
         parser = lib.ArgumentParser(prog='order coffee')
@@ -203,7 +184,7 @@ def order_placement(self, in_envelope):
 
             else:
                 out_envelope.payload = result
-                out_envelope.type = 'receipt'
+                out_envelope.type = 'orderReceipt'
 
     elif item == 'chocolate':
         parser = lib.ArgumentParser(prog='order chocolate')
@@ -297,6 +278,52 @@ def stats_query(self, in_envelope):
     return out_envelope
 
 
+def peer_query(self, in_envelope):
+    """Swarm queries peer
+
+    PEER A
+     _             SWARM
+    | |   query     _
+    | |----------->|\|
+    | |            |\|             PEER B
+    | |            |\|    query     _
+    | |            |\|============>| |
+    | |            |\|             | |
+    | |            |\|             | |
+    | |            |\|             | |
+    | |            |\|             | |
+    | |            |\|    stats    | |
+    | |            |\|<------------|_|
+    | |            |\|
+    | |   stats    |\|
+    | |<-----------|_|
+    |_|
+
+    """
+
+    in_envelope.trace += ['process.peer_query']
+
+    peers, query = in_envelope.payload
+    out_envelope = protocol.Envelope(author=in_envelope.author,
+                                     payload=query,
+                                     recipients=peers,
+                                     type='__swarmQuery__',
+                                     trace=in_envelope.trace)
+
+    # log = protocol.Log(
+    #     name='process.peer_query',
+    #     author=in_envelope.author,
+    #     level='info',
+    #     string='{} queried {} from {}'.format(in_envelope.author,
+    #                                           query, peers),
+    #     trace=in_envelope.trace,
+    #     envelope=in_envelope)
+
+    # self.log(log)
+
+    return out_envelope
+
+
 def peer_results(self, in_envelope):
     """Results have been returned from peer, process it
 
@@ -320,11 +347,15 @@ def peer_results(self, in_envelope):
 
     """
 
+    in_envelope.trace += ['process.peer_results']
+
+    print "peer_results: %s" % in_envelope.to_dict()
     results = protocol.QueryResults.from_dict(in_envelope.payload)
     out_envelope = protocol.Envelope(author=results.peer,
                                      payload=results,
                                      recipients=[results.questioner],
-                                     type='__queryResults__')
+                                     type='__queryResults__',
+                                     trace=in_envelope.trace)
     return out_envelope
 
 

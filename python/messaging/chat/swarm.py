@@ -5,8 +5,9 @@ import time
 
 # local library
 import lib
-import protocol
+import json
 import process
+import protocol
 
 # vendor dependency
 import zmq
@@ -52,10 +53,28 @@ class Swarm(object):
     def publish(self, envelope):
         """Physically publish `envelope`"""
         dic = envelope.to_dict()
-        self.pub.send_json(dic)
+        marshal = json.dumps(dic)
+        self.pub.send_multipart(['default', marshal])
+
+    def log(self, log):
+        dic = log.to_dict()
+        marshal = json.dumps(dic)
+        self.pub.send_multipart(['log', marshal])
 
     def router(self, in_envelope):
         """Take incoming envelope, process it, and send one back out"""
+
+        in_envelope.trace += ['Swarm.router']
+
+        log = protocol.Log(
+            name='Swarm.router',
+            author=in_envelope.author,
+            level='info',
+            string='{} was received'.format(in_envelope.type),
+            trace=in_envelope.trace,
+            envelope=in_envelope)
+
+        self.log(log)
 
         type = in_envelope.type
 
@@ -65,7 +84,6 @@ class Swarm(object):
             'orderPlacement': process.order_placement,
             'stateQuery': process.state_query,
             'peersQuery': process.peers_query,
-            # 'servicesQuery': process.services_query,
             'statsQuery': process.stats_query,
             'peerQuery': process.peer_query,
             'heartbeat': process.heartbeat,
@@ -75,10 +93,21 @@ class Swarm(object):
         processor = processors.get(type)
         if processor:
             out_envelope = processor(self, in_envelope)
+            out_envelope.trace += ['Swarm.router']
+
             if out_envelope:
                 self.publish(out_envelope)
+
+                log = protocol.Log(
+                    name='Swarm.router',
+                    author=out_envelope.author,
+                    level='info',
+                    string='{} was sent'.format(out_envelope.type),
+                    trace=out_envelope.trace)
+
+                self.log(log)
         else:
-            print "Envelope not recognised: %s" % in_envelope.type
+            print "Envelope not recognised: {}".format(type)
 
 
 if __name__ == '__main__':

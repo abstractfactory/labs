@@ -1,0 +1,35 @@
+QWidget {
+  /*background-color: transparent;*/
+  font-family: Consolas; }
+
+QLabel[tag='true'] {
+  padding: 2px;
+  border-radius: 2px; }
+
+Application {
+  /*background-color: $mid;*/ }
+  Application #Author {
+    background-color: #95bf40; }
+  Application #Name {
+    background-color: #999933; }
+  Application #Time {
+    background-color: #bf6a40; }
+  Application #Level {
+    background-color: #bf4040; }
+    Application #Level[level='info'] {
+      background-color: #aabf40; }
+    Application #Level[level='warning'] {
+      background-color: #bf4040; }
+  Application Entry:hover {
+    background-color: gainsboro; }
+  Application Entry #Box {
+    background-color: #999933; }
+    Application Entry #Box QLabel {
+      padding: 5px;
+      font-size: 8pt;
+      color: #26260d; }
+  Application Entry #Line {
+    background-color: gray;
+    min-height: 1px;
+    max-height: 1px;
+    min-width: 30px; }
