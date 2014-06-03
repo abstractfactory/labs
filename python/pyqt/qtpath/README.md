@@ -52,4 +52,4 @@ None
 <QPushButton object at 0x000000000342344D32>
 ```
 
-- walk(widget): os.walk equivalent
+- walk

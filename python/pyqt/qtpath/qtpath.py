@@ -95,7 +95,16 @@ def find(root, basename):
 
 
 def listwidget(root):
-    """os.listdir equivalent"""
+    """os.listdir equivalent
+
+    Example
+        >> for child in listwidget(window):
+        ...   print child
+        <QWidget object at 0x000000000342344D32>
+        <QPushButton object at 0x000000000342344D32>
+
+    """
+
     for child in root.children():
         # Uniquely identify instances of
         # QWidget without importing PyQt5.
