@@ -37,8 +37,12 @@ def abspath(root, widget):
 
     path = []
     for part in parts:
-        path.append('{}.{}'.format(part.objectName(),
-                                   type(part).__name__))
+        name = part.objectName()
+        typ = type(part).__name__
+
+        if name:
+            basename = '{}.{}'.format(name, typ)
+            path.append(basename)
 
     path = '/' + '/'.join(path)
 

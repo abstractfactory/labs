@@ -1,4 +1,7 @@
 # Chat
+
+### [Video walkthrough](video/chat.logger.m4v)
+
 ![](images/title.png)
 
 An illustration of a *human-to-human* instant messaging application, made to explore the possibility of whether or not a similar approach can be taken in the design of *computer-to-computer* messaging.
@@ -7,7 +10,6 @@ An illustration of a *human-to-human* instant messaging application, made to exp
 
 > Instant messaging for Apps - http://jaxenter.com/an-introduction-to-scriptable-sockets-with-zeromq-49167.html
 
-### [Video walkthrough](video/chat.logger.m4v)
 
 # Architecture
 
