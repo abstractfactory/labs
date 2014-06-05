@@ -64,7 +64,6 @@ class Window(PWidget):
         view.setup(paths)
 
     def event_handler(self, event):
-        print event.isAccepted()
         if event.type() == SelectedEventType:
             print "%s was selected" % event.path
 
