@@ -1,25 +1,12 @@
-"""Event-handling with Custom Cascading
+"""
+By Justin Israel: http://pastebin.com/Rn739jdA
+- Converted to PyQt5
 
-QWidget is overriden to (re)implement `post_event` and `event_handler`.
-
-The native `postEvent` and `event` respectively works in a similar fashion
-but doesn't allow for user-defined QEvents to be propagated past its
-initial widget; unless you subclass QApplication.
-
-Reference: http://stackoverflow.com/questions/3180506/propagate-custom-qevent-to-parent-widget-in-qt-pyqt
-
-Notice how List is instancing Items based on input, and that it doesn't
-have to manually propagate events to Window. That's because all widgets
-in the path leading up to Window are our overridden PWidget which
-propagates events coming from within.
-
-QWidget.event() vs. PWidget.event_handler
-    They are indeed similar in behaviour, although overriding .event()
-    involves knowing exactly what is being overridden which would involve
-    source-diving into the Qt C++ code of which I am not qualified.
-
-    Managing it separately is a safe way forward, whilst keeping the door
-    open for transitioning onto .event() once I know more.
+Note from Marcus:
+    Here, events are posted onto a global Handler. The difference between
+    this and withcustomcascading.py is that parent widgets cannot intercept
+    events emitted by children, as they are directly posted onto the global
+    QApplication instance. Similar to withpypubsub.py.
 
 """
 
@@ -29,41 +16,13 @@ from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 
 
-class PWidget(QtWidgets.QWidget):
-    def __init__(self, *args, **kwargs):
-        super(PWidget, self).__init__(*args, **kwargs)
-        self.setAttribute(QtCore.Qt.WA_StyledBackground)
+class Handler(QtCore.QObject):
+    """
+    An event filter class for handling all logic
+    related to actions in a part of our system
+    """
 
-    def event_handler(self, event):
-        """Re-implementation of QtWidget.event()
-
-        Do nothing, cascade all events to compatible PWidgets.
-
-        """
-
-        parent = self.parent()
-        if hasattr(parent, 'post_event'):
-            parent.post_event(event)
-
-    def post_event(self, event):
-        self.event_handler(event)
-
-
-class Window(PWidget):
-    def __init__(self, *args, **kwargs):
-        super(Window, self).__init__(*args, **kwargs)
-
-        view = List()
-        view.setObjectName('List')
-
-        layout = QtWidgets.QHBoxLayout(self)
-        layout.addWidget(view)
-
-    def setup(self, paths):
-        view = self.findChild(QtWidgets.QWidget, 'List')
-        view.setup(paths)
-
-    def event_handler(self, event):
+    def eventFilter(self, obj, event):
         if event.type() == SelectedEventType:
             print "%s was selected" % event.path
 
@@ -73,20 +32,34 @@ class Window(PWidget):
         elif event.type() == DeleteEventType:
             print "%s was deleted" % event.path
 
-        super(Window, self).event_handler(event)
+        return super(Handler, self).eventFilter(obj, event)
 
 
-class List(PWidget):
-    """Notice how List isn't aware of any events coming through.
+class Window(QtWidgets.QWidget):
+    def __init__(self, *args, **kwargs):
+        super(Window, self).__init__(*args, **kwargs)
 
-    Events are being handled by our PWidget subclass.
+        view = List()
+        view.setObjectName('List')
 
-    """
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.addWidget(view)
 
+        # Example of installing event filter on a composed
+        # child widget
+        self._handler = Handler()
+        view.installEventFilter(self._handler)
+
+    def setup(self, paths):
+        view = self.findChild(QtWidgets.QWidget, 'List')
+        view.setup(paths)
+
+
+class List(QtWidgets.QWidget):
     def __init__(self, *args, **kwargs):
         super(List, self).__init__(*args, **kwargs)
 
-        body = PWidget()
+        body = QtWidgets.QWidget()
         body.setObjectName('Body')
 
         layout = QtWidgets.QVBoxLayout(body)
@@ -122,24 +95,23 @@ class List(PWidget):
             layout.addWidget(item)
 
 
-class Item(PWidget):
-    """Superclass to all items
-
-    Intercepts press/hover events for selected
-    and alive events respectively.
-
-    """
-
+class Item(QtWidgets.QWidget):
     def __init__(self, path):
         super(Item, self).__init__(None)
         self.path = path
+        self.setAttribute(QtCore.Qt.WA_StyledBackground)
 
         basename = os.path.basename(path)
-        name, _ = os.path.splitext(basename)
+        name, suffix = os.path.splitext(basename)
         label = QtWidgets.QLabel(name)
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.addWidget(label)
+
+        # Example of installing an event filter
+        # on the actual widget instead of composed children
+        self._handler = Handler()
+        self.installEventFilter(self._handler)
 
     def mousePressEvent(self, event):
         self.selected_event()
@@ -147,16 +119,10 @@ class Item(PWidget):
 
     def selected_event(self):
         custom_event = SelectedEvent(self.path)
-        self.post_event(custom_event)
+        QtWidgets.qApp.postEvent(self, custom_event)
 
 
 class SpecialItem(Item):
-    """Composite item with multiple buttons
-
-    Each button performs a unique task relevant to the item.
-
-    """
-
     def __init__(self, *args, **kwargs):
         super(SpecialItem, self).__init__(*args, **kwargs)
 
@@ -172,22 +138,21 @@ class SpecialItem(Item):
 
     def selected_event(self):
         custom_event = SelectedEvent(self.path + "|Special")
-        self.post_event(custom_event)
+        QtWidgets.qApp.postEvent(self, custom_event)
 
     def run_event(self):
         custom_event = RunEvent(self.path + "|Special")
-        self.post_event(custom_event)
+        QtWidgets.qApp.postEvent(self, custom_event)
 
     def delete_event(self):
         custom_event = DeleteEvent(self.path + "|Special")
-        self.post_event(custom_event)
+        QtWidgets.qApp.postEvent(self, custom_event)
 
 
 class SecureItem(Item):
-    """Plain item subclass, appending data"""
     def selected_event(self):
         custom_event = SelectedEvent(self.path + "|Secure")
-        self.post_event(custom_event)
+        QtWidgets.qApp.postEvent(self, custom_event)
 
 
 class BaseEvent(QtCore.QEvent):
@@ -208,9 +173,9 @@ class DeleteEvent(BaseEvent):
     pass
 
 
-SelectedEventType = 1001
-RunEventType = 1002
-DeleteEventType = 1003
+SelectedEventType = QtCore.QEvent.Type(1001)
+RunEventType = QtCore.QEvent.Type(1002)
+DeleteEventType = QtCore.QEvent.Type(1003)
 
 Types = {
     SelectedEvent: SelectedEventType,
