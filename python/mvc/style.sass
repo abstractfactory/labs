@@ -1,0 +1,103 @@
+
+// Main stylesheet, applies to all PyQt5 widgets
+
+$dark:      rgb(25, 25, 25)
+$mid:       rgb(50, 50, 50)
+$bright:    rgb(75, 75, 75)
+$dimmed:    rgb(210, 210, 210)
+$lowkey:    rgb(190, 190, 190)
+
+$red:       hsl(0, 50%, 50%)
+$highlight: hsl(35%, 50%, 80%)
+
+
+@mixin outset
+    border-style: solid
+    border-width: 1px
+    border-left-color: lighten($bright, 5%)
+    border-right-color: darken($bright, 5%)
+    border-top-color: lighten($bright, 5%)
+    border-bottom-color: darken($bright, 5%)
+
+
+@mixin inset
+    border-style: solid
+    border-width: 1px
+    border-left-color: darken($mid, 5%)
+    border-right-color: lighten($mid, 20%)
+    border-top-color: darken($mid, 5%)
+    border-bottom-color: lighten($mid, 20%)
+
+
+QWidget
+    color: white
+    border: none
+    background-color: transparent
+
+
+QLabel
+    font-size: 12pt
+
+
+View
+    border-top: 1px solid lighten($mid, 5%)
+
+
+Controller
+    background-color: $mid
+
+// List
+//     background-color: $mid
+
+// View
+//     background-color: $mid
+
+QPushButton
+    &:hover
+        background-color: lighten($bright, 10%)
+    &:checked
+        background-color: $dark
+    &:checked:hover
+        background-color: lighten($dark, 5%)
+    &:pressed
+        background-color: lighten($bright, 10%)
+
+
+Item
+    // @include outset
+    // background-color: $bright
+    min-height: 20px
+    min-width: 75px
+    padding-left: 10px
+    padding-right: 20px
+    text-align: left
+    font-weight: bold
+
+
+HeaderItem
+    @include outset
+    color: white
+    min-height: 20px
+    min-width: 75px
+    background-color: $bright
+
+
+EditorItem
+    @include outset
+    background-color: $bright
+
+
+NewItem
+    background-color: transparent
+    min-height: 35px
+    border: none
+    color: transparent
+    padding-left: 5px
+    padding-right: 5px
+
+    &:hover
+        color: hsva(0, 0, 100%, 80%)
+        padding: -2px
+        background-color: transparent
+        border: 2px dashed hsva(0, 0, 100%, 10%)
+    

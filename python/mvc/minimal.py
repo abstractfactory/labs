@@ -105,7 +105,6 @@ class View(QtWidgets.QWidget):
 
             data = self.model.data
             old_data = self.old_data
-            print self.old_data, data
 
             added = list(set(data) - set(old_data))
             removed = list(set(old_data) - set(data))
