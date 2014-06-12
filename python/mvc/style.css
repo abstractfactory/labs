@@ -39,6 +39,8 @@ HeaderItem {
   color: white;
   min-height: 20px;
   min-width: 75px;
+  padding-left: 10px;
+  padding-right: 10px;
   background-color: #4b4b4b; }
 
 EditorItem {

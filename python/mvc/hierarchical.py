@@ -53,7 +53,7 @@ Description:
 Features:
     1. Multiple views
 
-    # Multiple Views
+    Multiple Views
         The same model draws two views, both editable
 
 Events:
