@@ -42,13 +42,11 @@ HeaderItem {
   background-color: #4b4b4b; }
 
 EditorItem {
-  border-style: solid;
-  border-width: 1px;
-  border-left-color: #585858;
-  border-right-color: #3e3e3e;
-  border-top-color: #585858;
-  border-bottom-color: #3e3e3e;
   background-color: #4b4b4b; }
+  EditorItem QLineEdit {
+    padding-left: 5px;
+    text-align: left;
+    font-weight: bold; }
 
 NewItem {
   background-color: transparent;

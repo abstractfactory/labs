@@ -10,13 +10,13 @@ Layout:
      _________________________________
     |  _____________________________  |<----- controller
     | |     |     |     |     |     | |
-    | |     |     |     |     |     | |
-    | |     |     |     |     |     |<----- view 1
+    | |     |     |     |     |     |<----- miller 1
+    | |     |     |     |     |   <------ list
     | |_____|_____|_____|_____|_____| |
     |  _____________________________  |
     | |     |     |     |           | |
     | |     |     |     |           | |
-    | |     |     |     |           |<----- view 2
+    | |     |     |     |           |<----- miller 2
     | |_____|_____|_____|___________| |
     |_________________________________|
 
@@ -196,33 +196,42 @@ class BaseEvent(QtCore.QEvent):
 
 @EventType.register
 class AddItemEvent(BaseEvent):
-    def __init__(self, uid):
+    def __init__(self, index):
         super(AddItemEvent, self).__init__()
-        self.uid = uid
+        self.index = index
         self.view = None
 
 
 @EventType.register
 class RemoveItemEvent(BaseEvent):
-    def __init__(self, uid):
+    def __init__(self, index):
         super(RemoveItemEvent, self).__init__()
-        self.uid = uid
+        self.index = index
         self.view = None
 
 
 @EventType.register
 class EditItemEvent(BaseEvent):
-    def __init__(self, uid):
+    def __init__(self, index):
         super(EditItemEvent, self).__init__()
-        self.uid = uid
+        self.index = index
+        self.view = None
+
+
+@EventType.register
+class AcceptEditEvent(BaseEvent):
+    def __init__(self, data, index):
+        super(AcceptEditEvent, self).__init__()
+        self.data = data
+        self.index = index
         self.view = None
 
 
 @EventType.register
 class SelectedEvent(BaseEvent):
-    def __init__(self, uid):
+    def __init__(self, index):
         super(SelectedEvent, self).__init__()
-        self.uid = uid
+        self.index = index
 
 
 # -------------------------------------------------------------------
@@ -232,7 +241,7 @@ class SelectedEvent(BaseEvent):
 # -------------------------------------------------------------------
 
 
-def create_uid():
+def create_index():
     """Helper function"""
     return unicode(uuid4())
 
@@ -259,10 +268,10 @@ class ModelItem(object):
                                type(self).__name__,
                                self.__str__())
 
-    def __init__(self, uri, uid, parent=None):
+    def __init__(self, uri, index, parent=None):
         assert ":" in uri
         self.uri = uri
-        self.uid = uid
+        self.index = index
         self.children = list()
         self.parent = parent
 
@@ -301,20 +310,23 @@ class Model(QtCore.QObject):
     def __init__(self, parent=None):
         super(Model, self).__init__(parent)
         self.root_item = None
-        self.uids = dict()
+        self.indexes = dict()
 
-    def data(self, uid, role):
-        """Return `role` from `uid`
+    def data(self, index, role):
+        """Return `role` from `index`
 
         Supported roles:
             display
 
         """
 
-        item = self.uids[uid]
+        item = self.indexes[index]
         return item.data(role=role)
 
-    def children(self, uid):
+    def set_data(self, index, value, role):
+        pass
+
+    def children(self, index):
         """Traversing items is the responsibility of the model
 
         The model has access to network, file-system and any arbitrary
@@ -323,19 +335,19 @@ class Model(QtCore.QObject):
 
         """
 
-        root = self.uids[uid]
+        root = self.indexes[index]
 
         if not root.has_children and os.path.isdir(root.path):
             scheme = root.scheme
 
             if scheme == 'disk':
                 for child in os.listdir(root.path):
-                    child_uid = create_uid()
+                    child_index = create_index()
                     full_path = os.path.join(root.path, child)
                     child_item = ModelItem(uri=scheme + ":" + full_path,
-                                           uid=child_uid,
+                                           index=child_index,
                                            parent=root)
-                    self.uids[child_uid] = child_item
+                    self.indexes[child_index] = child_item
 
             if scheme == 'widget':
                 print "Listing children of: %s" % 2
@@ -344,65 +356,65 @@ class Model(QtCore.QObject):
             yield child
 
     def setup(self, uri):
-        uid = create_uid()
+        index = create_index()
 
-        root_item = ModelItem(uri=uri, uid=uid, parent=None)
-        self.uids[uid] = root_item
+        root_item = ModelItem(uri=uri, index=index, parent=None)
+        self.indexes[index] = root_item
 
         self.root_item = root_item
         self.model_reset.emit()
 
-    def item(self, uid):
-        """Get item from `uid`"""
-        return self.uids[uid]
+    def item(self, index):
+        """Get item from `index`"""
+        return self.indexes[index]
 
-    def uid(self, item):
-        """Get uid from `item`"""
-        uids = {v: k for k, v in self.uids.items()}
-        return uids[item]
+    def index(self, item):
+        """Get index from `item`"""
+        indexes = {v: k for k, v in self.indexes.items()}
+        return indexes[item]
 
     def add_item(self, uri, parent=None):
         if not parent:
             parent = self.root_item
 
-        uid = create_uid()
+        index = create_index()
         item = ModelItem(uri=uri,
-                         uid=uid,
+                         index=index,
                          parent=parent)
-        self.uids[uid] = item
+        self.indexes[index] = item
 
-        self.data_added.emit(uid)
+        self.data_added.emit(index)
 
         # Return None.
         # Use the data_added signal to retrieve UID.
         return None
 
-    def remove_item(self, uid):
-        item = self.uids.pop(uid)
+    def remove_item(self, index):
+        item = self.indexes.pop(index)
 
         # Physically remove item
         item.remove()
 
-        self.data_removed.emit(uid)
+        self.data_removed.emit(index)
 
-    def modify_item(self, uid, mod):
-        uid = self.uids[uid]
+    def modify_item(self, index, mod):
+        index = self.indexes[index]
         # modify item here
-        self.data_removed.emit(uid)
+        self.data_removed.emit(index)
 
     def reset(self):
-        while self.uids:
-            self.uids.pop()
+        while self.indexes:
+            self.indexes.pop()
 
         # Re-register root_item
-        root_uid = self.root_item.uid
-        self.uids[root_uid] = self.root_item
+        root_index = self.root_item.index
+        self.indexes[root_index] = self.root_item
 
         self.model_reset.emit()
 
     def count(self):
         """Return number of items in model"""
-        return len(self.uids)
+        return len(self.indexes)
 
 
 # -------------------------------------------------------------------
@@ -414,10 +426,10 @@ class Model(QtCore.QObject):
 
 class Item(QtWidgets.QPushButton):
 
-    def __init__(self, label, uid=None, parent=None):
+    def __init__(self, label, index, parent=None):
         super(Item, self).__init__(label, parent)
         self.released.connect(self.selected_event)
-        self.uid = uid
+        self.index = index
 
         self.setCheckable(True)
         self.setAutoExclusive(True)
@@ -426,19 +438,24 @@ class Item(QtWidgets.QPushButton):
         action = self.sender()
         label = action.text()
 
-        if label == "Add item":
-            event = AddItemEvent(uid=self.uid)
+        if label == "Add":
+            event = AddItemEvent(index=self.index)
             QtWidgets.QApplication.postEvent(self, event)
 
         elif label == "Remove":
-            event = RemoveItemEvent(uid=self.uid)
+            event = RemoveItemEvent(index=self.index)
+            QtWidgets.QApplication.postEvent(self, event)
+
+        elif label == "Edit":
+            event = EditItemEvent(index=self.index)
             QtWidgets.QApplication.postEvent(self, event)
 
     def contextMenuEvent(self, event):
         menu = QtWidgets.QMenu(self)
 
-        for label in ("Add item",
-                      "Remove"):
+        for label in ("Add",
+                      "Remove",
+                      "Edit"):
             action = QtWidgets.QAction(label,
                                        self,
                                        triggered=self.action_event)
@@ -446,24 +463,60 @@ class Item(QtWidgets.QPushButton):
 
         menu.exec_(event.globalPos())
 
+    def mouseDoubleClickEvent(self, event):
+        event = EditItemEvent(index=self.index)
+        QtWidgets.QApplication.postEvent(self, event)
+
     def selected_event(self):
-        event = SelectedEvent(uid=self.uid)
+        event = SelectedEvent(index=self.index)
         QtWidgets.QApplication.postEvent(self, event)
 
 
 class EditorItem(QtWidgets.QWidget):
-    pass
+    def __init__(self, label, index, parent=None):
+        super(EditorItem, self).__init__(parent)
+        self.setAttribute(QtCore.Qt.WA_StyledBackground)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+
+        self.index = index
+
+        editor = QtWidgets.QLineEdit()
+        editor.setText(label)
+        editor.returnPressed.connect(self.accept_event)
+
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.addWidget(editor)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        self.editor = editor
+
+    def show(self):
+        super(EditorItem, self).show()
+        self.raise_()
+        self.editor.setFocus(True)
+
+    def set_text(self, text):
+        self.editor.setText(text)
+
+    def accept_event(self):
+        event = AcceptEditEvent(data=self.editor.text(), index=self.index)
+        QtWidgets.QApplication.postEvent(self, event)
+
+        self.close()
+
+    def leaveEvent(self, event):
+        self.close()
 
 
 class NewItem(QtWidgets.QPushButton):
-    def __init__(self, uid, parent=None):
+    def __init__(self, index, parent=None):
         super(NewItem, self).__init__(parent)
-        self.uid = uid
+        self.index = index
         self.setText('+')
         self.released.connect(self.new_event)
 
     def new_event(self):
-        event = AddItemEvent(uid=self.uid)
+        event = AddItemEvent(index=self.index)
         QtWidgets.QApplication.postEvent(self, event)
 
 
@@ -471,11 +524,12 @@ class HeaderItem(QtWidgets.QPushButton):
     pass
 
 
-class List(QtWidgets.QWidget):
-    def __init__(self, uid, parent=None):
-        super(List, self).__init__(parent)
+class Listview(QtWidgets.QWidget):
+    def __init__(self, index, parent=None):
+        super(Listview, self).__init__(parent)
 
-        self.uid = uid
+        self.index = index
+        self.indexes = dict()
         self.items = list()
         self.model = None
         self.__signals = list()
@@ -484,6 +538,16 @@ class List(QtWidgets.QWidget):
         layout.setAlignment(QtCore.Qt.AlignTop)
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
+
+    def event(self, event):
+        if event.type() in (EventType.AddItemEvent,
+                            EventType.RemoveItemEvent,
+                            EventType.EditItemEvent):
+            # Enrich event
+            if event.index in self.indexes:
+                event.view = self
+
+        return super(Listview, self).event(event)
 
     def set_model(self, model):
         self.model = model
@@ -498,18 +562,18 @@ class List(QtWidgets.QWidget):
 
         self.clear()
 
-        label = model.data(uid=self.uid, role='display')
+        label = model.data(index=self.index, role='display')
         header = HeaderItem(label)
-        newitem = NewItem(self.uid)
+        newitem = NewItem(self.index)
 
         self.layout().insertWidget(0, header)
         self.layout().addWidget(newitem)
 
         # Add items
-        for model_item in model.children(uid=self.uid):
-            uid = model_item.uid
-            label = model.data(uid=uid, role='display')
-            self.add_item(label, uid)
+        for model_item in model.children(index=self.index):
+            index = model_item.index
+            label = model.data(index=index, role='display')
+            self.add_item(label, index)
 
         # Store reference for .release()
         self.__signals.extend(signals.items())
@@ -519,31 +583,32 @@ class List(QtWidgets.QWidget):
             item = self.items.pop()
             item.deleteLater()
 
-    def add_item(self, label, uid):
-        item = Item(label, uid=uid, parent=self)
+    def add_item(self, label, index):
+        item = Item(label, index=index, parent=self)
 
         layout = self.layout()
         layout.insertWidget(layout.count() - 1, item)
 
         self.items.append(item)
+        self.indexes[index] = item
 
-    def remove_item(self, uid):
-        item = self.uids.pop(uid)
+    def remove_item(self, index):
+        item = self.indexes.pop(index)
         item.deleteLater()
 
-    def data_changed_event(self, uid):
+    def data_changed_event(self, index):
         pass
 
-    def data_added_event(self, uid):
-        model_item = self.model.item(uid)
+    def data_added_event(self, index):
+        model_item = self.model.item(index)
         model_parent_item = model_item.parent
 
         # Only update list if change was related to it.
-        if model_parent_item.uid == self.uid:
-            label = self.model.data(uid=uid, role='display')
-            self.add_item(label, uid=uid)
+        if model_parent_item.index == self.index:
+            label = self.model.data(index=index, role='display')
+            self.add_item(label, index=index)
 
-    def data_removed_event(self, uid):
+    def data_removed_event(self, index):
         pass
 
     def model_reset_event(self):
@@ -556,13 +621,13 @@ class List(QtWidgets.QWidget):
         self.deleteLater()
 
 
-class View(QtWidgets.QWidget):
+class MillerView(QtWidgets.QWidget):
     def __init__(self, parent=None):
-        super(View, self).__init__(parent)
+        super(MillerView, self).__init__(parent)
         self.setAttribute(QtCore.Qt.WA_StyledBackground)
 
         self.lists = list()
-        self.uids = dict()
+        self.indexes = dict()
         self.model = None
         self.__signals = list()
 
@@ -588,60 +653,55 @@ class View(QtWidgets.QWidget):
             lis = self.lists.pop()
             lis.release()
 
-    def add_list(self, uid):
-        model_item = self.model.item(uid)
+    def add_list(self, index):
+        model_item = self.model.item(index)
 
         model_parent = model_item.parent
         if model_parent:
-            parent_list = self.uids.get(model_parent.uid, None)
+            parent_list = self.indexes.get(model_parent.index, None)
 
             # Remove all lists to the left of parent_list
             if parent_list:
-                index = self.lists.index(parent_list)
-                while len(self.lists) > index + 1:
+                idx = self.lists.index(parent_list)
+                while len(self.lists) > idx + 1:
                     lis = self.lists.pop()
                     lis.release()
-                    self.uids.pop(lis.uid)
+                    self.indexes.pop(lis.index)
 
         # Add list to the left
-        lis = List(uid=uid)
+        lis = Listview(index=index)
         lis.set_model(self.model)  # Re-use model
 
         self.lists.append(lis)
         self.layout().addWidget(lis)
 
         # The UID is the link between model and view
-        self.uids[uid] = lis
+        self.indexes[index] = lis
 
         return lis
 
-    def remove_list(self, uid):
-        lis = self.uids[uid]
+    def remove_list(self, index):
+        lis = self.indexes[index]
         self.lists.remove(lis)
-        self.uids.remove(uid)
+        self.indexes.remove(index)
         lis.release()
 
     def event(self, event):
         if event.type() == EventType.SelectedEvent:
-            model_item = self.model.item(event.uid)
-            self.add_list(uid=model_item.uid)
+            model_item = self.model.item(event.index)
+            self.add_list(index=model_item.index)
 
-        elif event.type() in (EventType.AddItemEvent,
-                              EventType.RemoveItemEvent):
-            # Enrich event
-            event.view = self
+        return super(MillerView, self).event(event)
 
-        return super(View, self).event(event)
-
-    def data_added_event(self, uid):
+    def data_added_event(self, index):
         # this can't have any affect on the lists
         pass
 
-    def data_changed_event(self, uid):
+    def data_changed_event(self, index):
         # update header of affected list
         pass
 
-    def data_removed_event(self, uid):
+    def data_removed_event(self, index):
         # if the item was part of this view, remove it
         pass
 
@@ -649,7 +709,7 @@ class View(QtWidgets.QWidget):
         self.clear()
 
         item = self.model.root_item
-        self.add_list(uid=item.uid)
+        self.add_list(index=item.index)
 
     def release(self):
         """Clean up self"""
@@ -670,37 +730,59 @@ class Controller(QtWidgets.QWidget):
         label1.setAlignment(QtCore.Qt.AlignCenter)
         label2.setAlignment(QtCore.Qt.AlignCenter)
 
-        view1 = View()
-        view2 = View()
+        miller1 = MillerView()
+        miller2 = MillerView()
 
-        view1.set_model(model)
-        view2.set_model(model)
+        miller1.set_model(model)
+        miller2.set_model(model)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setAlignment(QtCore.Qt.AlignTop)
         layout.addWidget(label1)
-        layout.addWidget(view1)
+        layout.addWidget(miller1)
         layout.addWidget(label2)
-        layout.addWidget(view2)
+        layout.addWidget(miller2)
 
-        self.view1 = view1
-        self.view2 = view2
+        self.miller1 = miller1
+        self.miller2 = miller2
         self.model = model
 
         self.model.setup(uri)
 
         # Append debug items
-        # model.add_item('memory:test')
-        # model.add_item('memory:test')
-        # model.add_item('memory:test')
-        # model.add_item('widget:/Controller')
+        # model.add_item('memory:test1')
+        # model.add_item('memory:test2')
+        # model.add_item('memory:test3')
+        model.add_item('disk:c:\studio')
+        model.add_item('widget:/Controller')
 
     def event(self, event):
         if event.type() == EventType.AddItemEvent:
-            item = self.model.item(event.uid)
+            item = self.model.item(event.index)
             self.model.add_item(uri='memory:test%i' % self.model.count(),
                                 parent=item)
+
+        elif event.type() == EventType.RemoveItemEvent:
+            print "Removing"
+
+        elif event.type() == EventType.EditItemEvent:
+            edited = event.view.indexes[event.index]
+            parent = edited.parent()
+
+            editor = EditorItem('test', index=event.index, parent=parent)
+
+            # Overlap edited
+            editor.resize(edited.size())
+            editor.move(edited.pos())
+
+            editor.show()
+
+        elif event.type() == EventType.AcceptEditEvent:
+            item = self.model.item(event.index)
+            data = event.data
+            print "Accepting %s for %s" % (
+                data, self.model.data(event.index, 'display'))
 
         return super(Controller, self).event(event)
 
