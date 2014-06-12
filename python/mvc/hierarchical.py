@@ -446,7 +446,6 @@ class List(QtWidgets.QWidget):
             for child in children:
                 uid = child.uid
                 label = self.model.data('display', uid)
-                print "label: %s" % label
                 self.add_item(label=label, uid=uid)
 
             # Add utility items
@@ -513,8 +512,7 @@ class View(QtWidgets.QWidget):
                     lis.deleteLater()
 
                     removed_uid = lis.uid
-                    removed = self.uids.pop(removed_uid)
-                    print "Removed: %s" % removed
+                    self.uids.pop(removed_uid)
 
         # Add list to the left
         lis = List(uid=uid)

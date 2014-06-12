@@ -1,5 +1,26 @@
 """Minimal example of MVC in Python
 
+An as small-as-possible demonstration of MVC using Python and PyQt.
+When the model changes, its entire content is transmitted along with
+the DataChangedEvent. The View then figures out what was different
+from its previous state, and reacts accordingly.
+
+This is innefficient for large sets of data, as there are continuous
+computations of deltas between the sets upon each change.
+
+A more efficient method is to, instead of transmitting the entire
+dataset, to only transmit changes.
+
+UUID
+    The relationship between an item in the model and an item in a view
+    is maintained via a common UUID. Upon instantiation of a new item into
+    the model, a UUID is associated and emitted along with the
+    DataAddedEvent event.
+
+    When the view instantiates a new widget, the UUID is stored together
+    with it, and used in any communication with the model; such as getting
+    the display-label for the widget.
+
 References:
     http://en.wikipedia.org/wiki/Model%E2%80%93view%E2%80%93controller
     http://wiki.wxpython.org/ModelViewController
