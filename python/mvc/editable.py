@@ -301,11 +301,6 @@ class ModelItem(object):
         self.children.remove(item)
 
 
-# class UriItem(ModelItem):
-#     def __init__(self, data, parent=None):
-#         super(UriItem, self).__init__(data, parent)
-
-
 class Model(QtCore.QObject):
     data_changed = QtCore.pyqtSignal(str)  # UUID
     data_added = QtCore.pyqtSignal(str)
