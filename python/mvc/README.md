@@ -47,7 +47,7 @@ And the standard MVC architecture looks like this; where Views monitor changes i
 |         |<-----|  Controller  |          \______/
 |_________|      |______________|
 
-```python
+```
 
 ## Description
 
@@ -57,6 +57,7 @@ In the final example, editable.py, two views monitor changes from Model. The use
 
 The relationship between an item in the model and an item in a view is maintained via a common UUID. Upon instantiation a new item into the model, a UUID is associated and emitted along with the DataAddedEvent event. This UUID is referred to as `index`
 
+```python
                     __   __
                    |       |
                    | index |
@@ -75,10 +76,11 @@ The relationship between an item in the model and an item in a view is maintaine
           |  ...  |           |  ...  |
           |_______|           |_______|
 
+```
 
-    When the view instantiates a new widget, the UUID is stored together with
-    it, and used in any communication with the model; such as getting the
-    display-label for the widget.
+When the view instantiates a new widget, the UUID is stored together with
+it, and used in any communication with the model; such as getting the
+display-label for the widget.
 
 ### Model responsibility
 
