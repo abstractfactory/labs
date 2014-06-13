@@ -44,6 +44,25 @@ Description:
         the model, a UUID is associated and emitted along with the
         DataAddedEvent event. This UUID is referred to as `index`
 
+                        __   __
+                       |       |
+                       | index |
+                       | index |
+                       | index |
+                  .--->|  ...  |<----.
+                 |     |       |     |
+                 |     |__   __|     |
+             ____|____           ____|____
+            |         |         |         |
+            |  Model  |         |   View  |
+            |_________|         |_________|
+              |       |           |       |
+              | item1 |           | item1 |
+              | item2 |           | item2 |
+              |  ...  |           |  ...  |
+              |_______|           |_______|
+
+
         When the view instantiates a new widget, the UUID is stored together
         with it, and used in any communication with the model; such as getting
         the display-label for the widget.
@@ -515,9 +534,6 @@ class EditorItem(QtWidgets.QWidget):
 
         self.close()
 
-    # def leaveEvent(self, event):
-    #     self.close()
-
 
 class NewItem(QtWidgets.QPushButton):
     def __init__(self, index, parent=None):
@@ -663,6 +679,7 @@ class MillerView(QtWidgets.QWidget):
         self.model = None
         self.__signals = list()
 
+        # This is where we'll store all ListViews
         l = QtWidgets.QHBoxLayout(self)
         l.setContentsMargins(0, 0, 0, 0)
         l.setAlignment(QtCore.Qt.AlignLeft)
@@ -688,6 +705,18 @@ class MillerView(QtWidgets.QWidget):
             lis.release()
 
     def add_list(self, index):
+        """Add new list-view
+
+         ________________
+        |lis |child |    |
+        |    |++++++|    |
+        |    |++++++|    |
+        |    |++++++|    |
+        |    |++++++|    |
+        |____|++++++|____|
+
+        """
+
         model_item = self.model.item(index)
 
         # If `index` has parents already visible in the view
@@ -806,6 +835,16 @@ class Controller(QtWidgets.QWidget):
         # model.add_item('widget:/Controller')
 
     def event(self, event):
+        """Handle events coming in from items
+
+        Events
+            AddItemEvent    -- Add an item to model
+            RemoveItemEvent -- Remove an item from model
+            EditItemEvent   -- Pop up an editor
+            AcceptEditEvent -- Edit item in model
+
+        """
+
         if event.type() == EventType.AddItemEvent:
             item = self.model.item(event.index)
             self.model.add_item(uri='memory:test%i' % self.model.count(),
