@@ -72,9 +72,32 @@ SelectedEventType = 1002
 
 
 class DataChangedEvent(QtCore.QEvent):
+    """This event is sent whenever there is a change in the model
+
+    The Controller is subscribed to *signals* from the model and posts
+    this *event* to the View which then handles the event.
+
+    Events and Signals are similar.
+
+    The general rule is; events propagate and signals do not. Meaning
+    signals only reach particular widgets - the subscribers - whereas
+    an event is posted and then propagates upwards through the widget
+    hierarchy so that other widgets may handle the event as well.
+
+    """
+
     def __init__(self):
         super(DataChangedEvent, self).__init__(DataChangedEventType)
-        self.setAccepted(False)  # Not accepted per default
+
+        # QEvent has its "accepted" flag set per default. For an
+        # event to be accepted means that it will not propagate
+        # to the next parent. This is a way for widgets to grab
+        # onto an event, and tell it to be handled solely by a
+        # particular widget, and that it should not be passed along.
+        #
+        # As we make our custom events specifically to be propagated,
+        # we make sure to toggle this default behaviour off.
+        self.setAccepted(False)
 
 
 class SelectedEvent(QtCore.QEvent):
@@ -98,6 +121,28 @@ class Item(QtWidgets.QPushButton):
         self.released.connect(self.selected_event)
 
     def selected_event(self):
+        """Item is a QPushButton, which has a released signal by default
+
+        When the release signal is emitted, it sends along it's state.
+        We aren't interested in its state however; we're interested in
+        its content, so we make our own event and append the content
+        of this button.
+
+        We also make it into an event, rather than a signal, so that it
+        can post the event onto itself, which will make QApplication
+        forward the event to its parent and parents parent and so on,
+        until it reaches our Controller which is the one interested in
+        this event.
+
+        If we instead used signals, we would have to connect each widget
+        inbetween Item and Controller manually, which would not only mean
+        more work, but would also make our widget hierarchy fixed and thus
+        strongly coupled.
+
+        Events help keep the hierarchy arbitrary and independent of content.
+
+        """
+
         event = SelectedEvent(name=self.text())
         QtWidgets.QApplication.postEvent(self, event)
 
@@ -105,7 +150,6 @@ class Item(QtWidgets.QPushButton):
 class View(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(View, self).__init__(parent)
-
         self.old_data = list()
 
         css = """
@@ -123,6 +167,18 @@ class View(QtWidgets.QWidget):
 
     def event(self, event):
         if event.type() == DataChangedEventType:
+            """
+            The event doesn't send any data along with it and so for
+            our view to update, we must first figure out what is
+            different from last time we were updated.
+
+            Every time the view updates, it stores a local copy of all
+            of the data in the model and then uses that copy for comparison
+            upon the next update.
+
+            Not very efficient, of course.
+
+            """
 
             data = self.model.data
             old_data = self.old_data
@@ -162,6 +218,32 @@ class Controller(QtWidgets.QWidget):
         super(Controller, self).__init__(parent)
 
         model = FileSystemModel()
+
+        # In this module, the controller listens for events from
+        # the model. This means that for a controller to make use
+        # of a model and a view, it must know the details of both.
+        # This isn't necessarily a bad thing, the controller is
+        # allowed to have this kind of knowledge, but as you can
+        # see below, the event isn't interesting to the controller
+        # and is instead posted directly onto the view.
+        #
+        # The issue with this is two-fold.
+        #
+        # 1. We're using events to reflect updates from the model.
+        # The event will be received by the model, and then bubble
+        # back up to here, of which we care very little.
+        #
+        # 2. If we had more than one view (as is the case in the next
+        # example) then the event would be posted to both and then
+        # the inner view would post the event back up to its parent;
+        # resulting in double events for the upper view.
+        #
+        # We could solve this by simply accepting the event directly
+        # upon receving it; but then this would defeat the purpose
+        # of using event for this purpose to begin with.
+        #
+        # That is why in the following examples, signals are sent
+        # directly to views and to not bubble up.
         model.data_changed.connect(self.data_changed_event)
 
         view = View()
@@ -187,10 +269,26 @@ class Controller(QtWidgets.QWidget):
 
 
 class FileSystemModel(QtCore.QObject):
+    """This model will populate itself with content from a file-system
+
+    Notes:
+    data_changed -- The model uses signals as opposed to events because
+                    events in a model makes little sense when propagated.
+                    These events are meant for very specific subscribers.
+
+    self.data    -- As opposed to hierarchical.py, this model is
+                    1-dimensional and can only cope with very simple
+                    objects - strings. Each string take the form of a
+                    file-system path which is de-composed into the name
+                    of each button within the QPushButton subclass.
+
+    """
+
     data_changed = QtCore.pyqtSignal()
 
     def __init__(self):
         super(FileSystemModel, self).__init__()
+
         self.data = list()
 
     def setup(self, path):
