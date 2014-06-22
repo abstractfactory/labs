@@ -560,16 +560,16 @@ class Listview(QtWidgets.QWidget):
         self.setSizePolicy(QtWidgets.QSizePolicy.Fixed,
                            QtWidgets.QSizePolicy.MinimumExpanding)
 
+        l = QtWidgets.QVBoxLayout(self)
+        l.setAlignment(QtCore.Qt.AlignTop)
+        l.setContentsMargins(0, 0, 0, 0)
+        l.setSpacing(0)
+
         self.index = index
         self.indexes = dict()
         self.items = list()
         self.model = None
         self.__signals = list()
-
-        l = QtWidgets.QVBoxLayout(self)
-        l.setAlignment(QtCore.Qt.AlignTop)
-        l.setSpacing(0)
-        l.setContentsMargins(0, 0, 0, 0)
 
     def event(self, event):
         if event.type() in (EventType.AddItemEvent,
