@@ -5,23 +5,13 @@ Rectangle {
     width: 500
     height: 300
 
-    Rectangle {
+    Button {
         id: button
         x: 12
         y: 12
-        width: 116
-        height: 26
-        color: "lightsteelblue"
-        border.color: "slategray"
-        Text {
-            anchors.centerIn: parent
-            text: "Start"
-        }
-        MouseArea {
-            anchors.fill: parent
-            onClicked: {
-                status.text = "Button clicked!"
-            }
+        text: "Start"
+        onClicked: {
+            status.text = "Button clicked!"
         }
     }
 
