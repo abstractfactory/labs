@@ -1,0 +1,27 @@
+{% extends "head.html" %}
+{% block title %}Pyblish Event{% endblock %}
+
+{% block content %}
+
+<div class="container" id="main">
+	
+	{% include "navbar.html" %}
+	{% include "carousel.html" %}
+	{% include "well.html" %}
+	{% include "features-heading.html" %}
+	{% include "features.html" %}
+	
+	<div class="row" id="moreInfo">
+		{% include "tabblable.html" %}
+		{% include "more-info.html" %}
+	</div>
+
+	<hr>
+	
+	{% include "more-courses.html" %}
+	
+</div>
+
+{% include "footer.html" %}
+
+{% endblock %}

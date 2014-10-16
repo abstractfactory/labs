@@ -1,0 +1,63 @@
+.alert {
+  margin-top: 20px;
+  display: none; }
+
+.tabbable img.thumbnail {
+  margin: 0 20px 10px 0; }
+
+.thumbnails {
+  margin: 20px 0; }
+
+.thumbnail {
+  position: relative; }
+  .thumbnail span.glyphicon {
+    margin-right: 5px; }
+  .thumbnail h3 {
+    font-size: 16px;
+    margin: 0 0 10px;
+    line-height: 0px; }
+  .thumbnail .price {
+    font-size: 22px;
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    padding: 10px; }
+    .thumbnail .price sup {
+      font-weight: normal;
+      font-size: 20px; }
+
+body {
+  -webkit-font-smoothing: antialised;
+  text-rendering: optimizelegibility; }
+
+.well {
+  margin: 20px 0; }
+  .well .page-header {
+    margin-top: 0; }
+    .well .page-header h1 {
+      margin-top: 0; }
+
+ul.unstyled {
+  list-style: none;
+  padding: 0; }
+
+.thumbnail {
+  text-align: center; }
+
+#inputMessage {
+  margin-bottom: 15px; }
+
+footer {
+  background: #333333;
+  color: #eeeeee;
+  font-size: 11px;
+  padding: 20px; }
+
+@media (max-width: 480px) {
+  .thumbnail .price {
+    font-size: 14px; }
+    .thumbnail .price sup {
+      font-size: 10px; } }
+@media (max-width: 768px) {
+  #myCarousel .item {
+    height: 310px; } }

@@ -1,0 +1,53 @@
+<a href="#myModal" role="button" class="btn btn-warning" data-toggle="modal"><span class="glyphicon glyphicon-hand-up"></span> Click for a Modal Window</a>
+
+<div class="modal fade" id="myModal">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-header">
+				<button class="close" data-dismiss="modal">&times;</button>
+
+				<h4 class="modal-title">A Modal Window</h4>
+			</div>
+			<div class="modal-body">
+				<h4>Text in a modal</h4>
+				<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Numquam consectetur reiciendis voluptatum saepe ipsa quia magnam minima cum, nulla quas accusantium eveniet, culpa eaque provident. Ex, cumque labore vero cupiditate!</p>
+
+				<h4>Popovers</h4>
+				<a class="btn btn-danger pop" data-toggle="popover" data-placement="top" data-original-title="You clicked it" data-content="I knew you would.">Don't click this button!</a>
+
+				<h4>Tooltips in a modal</h4>
+				<a href="" data-title="Tooltip" rel="tooltip">This link</a> should have a tooltip and so should <a href="" data-title="Wohooo!" rel="tooltip">this one</a>
+
+				<hr>
+
+				<p><small class="text-muted">PS. This doesn't do anything</small></p>
+				<form class="form-horizontal">
+					<div class="form-group">
+						<label for="inputName" class="col-lg-2 control-label">Name</label>
+						<div class="col-lg-10">
+							<input type="text" class="form-control" id="inputName" placeholder="Name">
+						</div>
+					</div>
+					<div class="form-group">
+						<label for="inputEmail" class="col-lg-2 control-label">Email</label>
+						<div class="col-lg-10">
+							<input type="email" class="form-control" id="inputEmail" placeholder="Email">
+						</div>
+					</div>
+					<div class="form-group">
+						<label for="inputLabel" class="col-lg-2 control-label">Label</label>
+						<div class="col-lg-10">
+							<textarea id="inputMessage" rows="3" class="form-control" placeholder="Message"></textarea>
+							<button class="btn btn-success pull-right" type="submit">Send</button>
+						</div>
+					</div>
+				</form>
+
+			</div>
+			<div class="modal-footer">
+				<button class="btn btn-default" data-dismiss="modal" type="button">Close</button> <button class="btn btn-primary" type="button">Save Changes</button>
+			</div><!-- end modalFooter -->
+
+		</div>
+	</div>
+</div><!-- end myModal -->
