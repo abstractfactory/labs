@@ -1,4 +1,4 @@
-angular.module('ContactsApp', ['ngRoute', 'ngResource'])
+angular.module('ContactsApp', ['ngRoute', 'ngResource', 'ngMessages'])
 	.config(function($routeProvider, $locationProvider) {
 		// Provide an overview of contacts available in our application
 		$routeProvider
