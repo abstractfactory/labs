@@ -1,0 +1,45 @@
+<div>
+
+	<div class="row form-group" ng-form="newField" ng-if="display">
+	
+		<!-- Field Name -->
+		<div class="col-sm-2">
+			<input type								= "text"
+						 name								= "fieldName"
+						 class							= "form-control"
+						 required ng-model	= "field.name"
+						 placeholder				= "Name">
+		</div>
+
+		<!-- Field Value -->
+		<div class="col-sm-4">
+			<input type					= "{{field.type}}"
+						 name					= "fieldValue"
+						 class				= "form-control"
+						 ng-model			= "field.value"
+						 placeholder	= "Value">
+		</div>
+
+		<!-- Buttons -->
+		<div class="col-sm-6">
+			<button class    = "btn btn-primary"
+							ng-click = "add()">Add</button>
+			<button class    = "btn btn-primary"
+							ng-click = "remove()">Remove</button>
+		</div>
+	</div> <!-- end row -->
+
+	<div class="row form-group">
+		<div class="btn-group col-sm-offset-2 dropup">
+			<div class       = "btn btn-default dropdown-toggle"
+					 data-toggle = "dropdown">Add New Field <span class="caret"></span>
+			</div>
+			<ul class="dropdown-menu">
+				<li ng-repeat="(k,v) in types">
+					<a ng-click="show(k)"></a>{{v[0]}}
+				</li>
+			</ul> <!-- end dropdown -->
+		</div>
+	</div> <!-- end row -->
+
+</div>
