@@ -28,7 +28,7 @@ angular.module("ContactsApp")
             },
 
             // Unused variables ok
-            link: function ($scope, element, attr) {
+            link: function ($scope, _, __) {
                 $scope.$on("record:invalid", function () {
                     $scope[$scope.field].$setDirty();
                 });
@@ -51,6 +51,51 @@ angular.module("ContactsApp")
                 $scope.update = function () {
                     $timeout.cancel(saveTimeout);
                     saveTimeout = $timeout($scope.blurUpdate, 1000);
+                };
+            }
+        };
+    })
+    .directive("newField", function ($filter, FieldTypes) {
+        return {
+            restrict: "EA",
+            templateUrl: "views/new-field.html",
+            replace: true,
+            scope: {
+                record: "=",
+                live: "@"
+            },
+            require: "^form",
+            link: function ($scope, _, __, form) {
+                $scope.types = FieldTypes;
+                $scope.field = {};
+
+                $scope.show = function (type) {
+                    $scope.field.type = type;
+                    $scope.display = true;
+                };
+
+                $scope.remove = function () {
+                    $scope.field = {};
+                    $scope.display = false;
+                };
+
+                $scope.add = function () {
+                    if (form.newField.$valid) {
+                        // Convert Label-Case to Camel-Case
+                        var camelCase = $filter('camelCase')($scope.field.name);
+
+                        // Store as array, to match FieldTypes;
+                        // i.e. [name, description]
+                        $scope.record[camelCase] = [$scope.field.value,
+                                                    $scope.field.type];
+                        $scope.remove();
+
+                        if ($scope.live !== "false") {
+                            $scope.record.$update(function (updatedRecord) {
+                                $scope.record = updatedRecord;
+                            });
+                        }
+                    }
                 };
             }
         };
