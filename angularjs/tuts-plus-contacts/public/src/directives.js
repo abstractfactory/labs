@@ -27,8 +27,7 @@ angular.module("ContactsApp")
                 required: "@"
             },
 
-            // Unused variables ok
-            link: function ($scope, _, __) {
+            link: function ($scope, element, attr) { // Unused variables ok
                 $scope.$on("record:invalid", function () {
                     $scope[$scope.field].$setDirty();
                 });
@@ -50,6 +49,7 @@ angular.module("ContactsApp")
                 var saveTimeout;
                 $scope.update = function () {
                     $timeout.cancel(saveTimeout);
+                    console.log("$scope: " + Object.keys($scope));
                     saveTimeout = $timeout($scope.blurUpdate, 1000);
                 };
             }
@@ -65,7 +65,7 @@ angular.module("ContactsApp")
                 live: "@"
             },
             require: "^form",
-            link: function ($scope, _, __, form) {
+            link: function ($scope, element, attr, form) {
                 $scope.types = FieldTypes;
                 $scope.field = {};
 

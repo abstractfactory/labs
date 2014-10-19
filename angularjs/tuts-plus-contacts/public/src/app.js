@@ -10,8 +10,12 @@ angular.module("ContactsApp", ["ngRoute", "ngResource", "ngMessages"])
                 templateUrl: "views/list.html"
             })
             .when("/contact/new", {
-                controller: "NewController",
+                controller: "NewCtrl",
                 templateUrl: "views/new.html"
+            })
+            .when("/contact/:id", {
+                contoller: "SingleCtrl",
+                templateUrl: "views/single.html"
             });
 
         // Remove the # from urls, as HTML5 is capable of dynamically

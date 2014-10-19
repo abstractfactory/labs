@@ -2,7 +2,7 @@
 
 	<div class="row form-group" ng-form="newField" ng-if="display">
 	
-		<!-- Field Name -->
+		<!-- Name -->
 		<div class="col-sm-2">
 			<input type								= "text"
 						 name								= "fieldName"
@@ -11,7 +11,7 @@
 						 placeholder				= "Name">
 		</div>
 
-		<!-- Field Value -->
+		<!-- Value -->
 		<div class="col-sm-4">
 			<input type					= "{{field.type}}"
 						 name					= "fieldValue"
@@ -36,7 +36,7 @@
 			</div>
 			<ul class="dropdown-menu">
 				<li ng-repeat="(k,v) in types">
-					<a ng-click="show(k)"></a>{{v[0]}}
+					<a ng-click="show(k)">{{v[0]}}</a>
 				</li>
 			</ul> <!-- end dropdown -->
 		</div>

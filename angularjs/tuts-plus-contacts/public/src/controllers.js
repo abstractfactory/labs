@@ -18,7 +18,7 @@ angular.module("ContactsApp")
             $location.url("/contact/" + id);
         };
     })
-    .controller("NewController", function ($scope, Contact, $location) {
+    .controller("NewCtrl", function ($scope, Contact, $location) {
         $scope.contact = new Contact({
             firstName:  ["", "text"],
             lastName:   ["", "text"],
@@ -37,5 +37,12 @@ angular.module("ContactsApp")
                 $scope.contact.$save();
                 $location.url("/contacts");
             }
+        };
+    })
+    .controller("SingleCtrl", function ($scope, $location, Contact, $routeParams) {
+        $scope.contact = Contact.get({ id: parseInt($routeParams.id, 10) });
+        $scope.delete = function () {
+            $scope.contact.$delete();
+            $location.url("/contacts");
         };
     });
