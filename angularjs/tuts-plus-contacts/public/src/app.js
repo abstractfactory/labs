@@ -14,7 +14,7 @@ angular.module("ContactsApp", ["ngRoute", "ngResource", "ngMessages"])
                 templateUrl: "views/new.html"
             })
             .when("/contact/:id", {
-                contoller: "SingleCtrl",
+                controller: "SingleCtrl",
                 templateUrl: "views/single.html"
             });
 

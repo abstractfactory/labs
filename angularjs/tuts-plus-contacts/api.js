@@ -16,7 +16,7 @@ router
     })
     .use(bodyParser.json())
     .route('/contact')
-        .get(function (req, res) {
+    .get(function (req, res) {
         db.find({ userId: parseInt(req.user.id, 10) }, function (err, data) {
             res.json(data);
         });
@@ -36,7 +36,7 @@ router
         next();
     })
     .route('/contact/:id')
-        .get(function (req, res) {
+    .get(function (req, res) {
         db.findOne(req.dbQuery, function (err, data) {
             res.json(data);
         });

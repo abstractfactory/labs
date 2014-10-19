@@ -1,18 +1,18 @@
 "use strict";
 /*global angular*/
 
-angular.module("ContactsApp")
-    .filter("labelCase", function () {
+angular.module('ContactsApp')
+    .filter('labelCase', function () {
         // firstName -> First Name
         return function (input) {
-            input = input.replace(/([A-Z])/g, " $1");
+            input = input.replace(/([A-Z])/g, ' $1');
             return input[0].toUpperCase() + input.slice(1);
         };
     })
     .filter("camelCase", function () {
         // First Name -> firstName
         return function (input) {
-            return input.toLowerCase().replace(/ (\w)/g, function (_, letter) {
+            return input.toLowerCase().replace(/ (\w)/g, function (match, letter) {
                 return letter.toUpperCase();
             });
         };
@@ -25,6 +25,7 @@ angular.module("ContactsApp")
                     result[key] = val;
                 }
             });
+
             return result;
         };
     });

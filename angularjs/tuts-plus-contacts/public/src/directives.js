@@ -1,63 +1,64 @@
-"use strict";
 /*global angular*/
+"use strict";
 
 angular.module("ContactsApp")
     .value("FieldTypes", {
-        text:       ["Text",            "should be text"],
-        email:      ["Email",           "should be an email address"],
-        number:     ["Number",          "should be a number"],
-        date:       ["Date",            "should be a date"],
-        datetime:   ["Datetime",        "should be a datetime"],
-        time:       ["Time",            "should be a time"],
-        month:      ["Month",           "should be a month"],
-        week:       ["Week",            "should be a week"],
-        url:        ["URL",             "should be a url"],
-        tel:        ["Phone Number",    "should be a tel"],
-        color:      ["Color",           "should be a color"]
+        text:     ["Text",         "should be text"],
+        email:    ["Email",        "should be an email address"],
+        number:   ["Number",       "should be a number"],
+        date:     ["Date",         "should be a date"],
+        datetime: ["Datetime",     "should be a datetime"],
+        time:     ["Time",         "should be a time"],
+        month:    ["Month",        "should be a month"],
+        week:     ["Week",         "should be a week"],
+        url:      ["URL",          "should be a url"],
+        tel:      ["Phone Number", "should be a tel"],
+        color:    ["Color",        "should be a color"]
     })
     .directive("formField", function ($timeout, FieldTypes) {
         return {
-            restrict: "EA",
+            restrict: "A",
             templateUrl: "views/form-field.html",
             replace: true,
             scope: {
-                record: "=", // A two-way binding
-                field: "@",  // A one-way binding
+                record: "=",  // Two-way binding
+                field: "@",   // One-way binding
                 live: "@",
                 required: "@"
             },
-
-            link: function ($scope, element, attr) { // Unused variables ok
-                $scope.$on("record:invalid", function () {
-                    $scope[$scope.field].$setDirty();
+            link: function (scope, element, attr) {
+                scope.$on("record:invalid", function () {
+                    scope[scope.field].$setDirty();
                 });
 
-                $scope.types = FieldTypes;
-                $scope.remove = function (field) {
-                    delete $scope.record[field];
-                    $scope.blurUpdate();
+                scope.types = FieldTypes;
+                scope.remove = function (field) {
+                    delete scope.record[field];
+                    scope.blurUpdate();
                 };
 
-                $scope.blurUpdate = function () {
-                    if ($scope.live !== "false") {
-                        $scope.record.$update(function (updatedRecord) {
-                            $scope.record = updatedRecord;
+                scope.blurUpdate = function () {
+                    // This function actually writes to the database
+                    if (scope.live !== "false") {
+                        scope.record.$update(function (updatedRecord) {
+                            scope.record = updatedRecord;
                         });
                     }
                 };
 
+                // Any time the user hits a key, a timeout will be triggered.
+                // The timer is reset anytime a key is hit.
                 var saveTimeout;
-                $scope.update = function () {
+                scope.update = function () {
                     $timeout.cancel(saveTimeout);
-                    console.log("$scope: " + Object.keys($scope));
-                    saveTimeout = $timeout($scope.blurUpdate, 1000);
+                    saveTimeout = $timeout(scope.blurUpdate, 1000);
                 };
             }
         };
     })
     .directive("newField", function ($filter, FieldTypes) {
         return {
-            restrict: "EA",
+            restrict: "A",
             templateUrl: "views/new-field.html",
             replace: true,
             scope: {
@@ -65,34 +66,30 @@ angular.module("ContactsApp")
                 live: "@"
             },
             require: "^form",
-            link: function ($scope, element, attr, form) {
-                $scope.types = FieldTypes;
-                $scope.field = {};
+            link: function (scope, element, attr, form) {
+                scope.types = FieldTypes;
+                scope.field = {};
 
-                $scope.show = function (type) {
-                    $scope.field.type = type;
-                    $scope.display = true;
+                scope.show = function (type) {
+                    scope.field.type = type;
+                    scope.display = true;
                 };
 
-                $scope.remove = function () {
-                    $scope.field = {};
-                    $scope.display = false;
+                scope.remove = function () {
+                    scope.field = {};
+                    scope.display = false;
                 };
 
-                $scope.add = function () {
+                scope.add = function () {
                     if (form.newField.$valid) {
-                        // Convert Label-Case to Camel-Case
-                        var camelCase = $filter('camelCase')($scope.field.name);
+                        var camelCase = $filter("camelCase")(scope.field.name);
+                        // Store as array, to match our FieldTypes schema above
+                        scope.record[camelCase] = [scope.field.value, scope.field.type];
+                        scope.remove();
 
-                        // Store as array, to match FieldTypes;
-                        // i.e. [name, description]
-                        $scope.record[camelCase] = [$scope.field.value,
-                                                    $scope.field.type];
-                        $scope.remove();
-
-                        if ($scope.live !== "false") {
-                            $scope.record.$update(function (updatedRecord) {
-                                $scope.record = updatedRecord;
+                        if (scope.live !== "false") {
+                            scope.record.$update(function (updatedRecord) {
+                                scope.record = updatedRecord;
                             });
                         }
                     }

@@ -1,21 +1,21 @@
 "use strict";
 /*global angular*/
 
-angular.module("ContactsApp")
-    .controller("ListCtrl", function ($scope, Contact, $location) {
+angular.module('ContactsApp')
+    .controller('ListCtrl', function ($scope, Contact, $location) {
         $scope.contacts = Contact.query();
-        $scope.fields = ["firstName", "lastName"];
+        $scope.fields = ['firstName', 'lastName'];
 
         $scope.sort = function (field) {
             $scope.sort.field = field;
             $scope.sort.order = !$scope.sort.order;
         };
 
-        $scope.sort.field = "firstName";
+        $scope.sort.field = 'firstName';
         $scope.sort.order = false;
 
         $scope.show = function (id) {
-            $location.url("/contact/" + id);
+            $location.url('/contact/' + id);
         };
     })
     .controller("NewCtrl", function ($scope, Contact, $location) {
@@ -27,7 +27,7 @@ angular.module("ContactsApp")
             cellPhone:  ["", "tel"],
             birthday:   ["", "date"],
             website:    ["", "url"],
-            address:    ["", "text"],
+            address:    ["", "text"]
         });
 
         $scope.save = function () {

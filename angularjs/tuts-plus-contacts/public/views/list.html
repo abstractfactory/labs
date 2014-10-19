@@ -1,26 +1,21 @@
-<p><input type        = "search"
-          class       = "form-control"
-          placeholder = "Search"
-          ng-model    = "query"></p>
+<p><input type="search" class="form-control", placeholder="Search", ng-model="query"></p>
 
 <table class="table table-hover table-bordered">
   <thead>
     <tr>
       <th ng-repeat="field in fields" ng-click="sort(field)">
         {{ field | labelCase }}
-        <span ng-show = "sort.field === field && !sort.order"
-              class   = "glyphicon glyphicon-chevron-down"></span>
-        <span ng-show = "sort.field === field && sort.order"
-              class   = "glyphicon glyphicon-chevron-up"></span>
+        <span ng-show="sort.field === field && !sort.order"
+              class="glyphicon glyphicon-chevron-down"></span>
+        <span ng-show="sort.field === field && sort.order"
+              class="glyphicon glyphicon-chevron-up"></span>
       </th>
     </tr>
   </thead>
   <tbody>
-    <tr ng-repeat = "contact in contacts | filter: query | orderBy: sort.field : sort.order">
-      <td ng-repeat = "field in fields"
-          ng-click  = "show(contact.id)">
-        {{ contact[field][0] }}
-      </td>
+    <tr ng-repeat="contact in contacts | filter: query | orderBy: sort.field : sort.order">
+      <td ng-repeat="field in fields" 
+          ng-click="show(contact.id)">{{ contact[field][0] }}</td>
     </tr>
   </tbody>
 </table>
