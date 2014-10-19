@@ -19,12 +19,12 @@
        ng-repeat="(k,y) in contact | keyFilter: 'firstName' | keyFilter: 'lastName' | keyFilter: 'id' | keyFilter: 'userId'"></div>  
 
   <div new-field
-       record="contact">
-    <div class="row form-group">
-      <div class="col-sm-offset-2">
-        <button class="btn btn-danger"
-                ng-click="delete()"> Delete Contact </button>
-      </div>
+       record="contact"></div>
+
+  <div class="row form-group">
+    <div class="col-sm-offset-2">
+      <button class="btn btn-danger"
+              ng-click="delete()"> Delete Contact </button>
     </div>
   </div>
 </form>

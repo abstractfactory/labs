@@ -2,7 +2,13 @@
 /*global angular*/
 
 angular.module('ContactsApp')
-    .controller('ListCtrl', function ($scope, Contact, $location) {
+    .controller('ListCtrl', function ($scope,
+                                      $rootScope,
+                                      Contact,
+                                      $location) {
+        // Global variable for navigation.
+        // This will be the ONLY global variable we'll make.
+        $rootScope.PAGE = "all";
         $scope.contacts = Contact.query();
         $scope.fields = ['firstName', 'lastName'];
 
@@ -18,7 +24,11 @@ angular.module('ContactsApp')
             $location.url('/contact/' + id);
         };
     })
-    .controller("NewCtrl", function ($scope, Contact, $location) {
+    .controller("NewCtrl", function ($scope,
+                                     $rootScope,
+                                     Contact,
+                                     $location) {
+        $rootScope.PAGE = "new";
         $scope.contact = new Contact({
             firstName:  ["", "text"],
             lastName:   ["", "text"],
@@ -39,7 +49,12 @@ angular.module('ContactsApp')
             }
         };
     })
-    .controller("SingleCtrl", function ($scope, $location, Contact, $routeParams) {
+    .controller("SingleCtrl", function ($scope,
+                                        $rootScope,
+                                        $location,
+                                        Contact,
+                                        $routeParams) {
+        $rootScope.PAGE = "single";
         $scope.contact = Contact.get({ id: parseInt($routeParams.id, 10) });
         $scope.delete = function () {
             $scope.contact.$delete();
