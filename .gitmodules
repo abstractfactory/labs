@@ -5,5 +5,5 @@
 	path = python/heroku/flask
 	url = git@heroku.com:af-flask.git
 [submodule "python/heroku/tuts-plus-contacts"]
-	path = python/heroku/tuts-plus-contacts
-	url = /home/marcus/github/labs/python/heroku/tuts-plus-contacts
+    path = python/heroku/tuts-plus-contacts
+    url = git@heroku.com:af-contacts.git
