@@ -4,7 +4,13 @@ import pymongo
 import flask.ext.restful
 
 
-client = pymongo.MongoClient()
+try:
+    client = pymongo.MongoClient()
+except:
+    # This will get output in the terminal is a user
+    # should try and launch without having installed Mongo
+    raise ValueError("MongoDB must be installed")
+
 db = client.test_database
 contacts = db.contacts
 excludes = {"_id": False}
