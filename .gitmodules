@@ -1,9 +1,0 @@
-[submodule "python/heroku/python-getting-started"]
-	path = python/heroku/python-getting-started
-	url = git@heroku.com:ancient-falls-8849.git
-[submodule "python/heroku/flask"]
-	path = python/heroku/flask
-	url = git@heroku.com:af-flask.git
-[submodule "python/heroku/tuts-plus-contacts"]
-    path = python/heroku/tuts-plus-contacts
-    url = git@heroku.com:af-contacts.git
