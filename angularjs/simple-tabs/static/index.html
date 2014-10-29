@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html ng-app="awesomeApp">
+  <head>
+    <base href="/">
+
+    <link rel="stylesheet" href="static/css/reset.css">
+    <link rel="stylesheet" href="static/css/app.css">
+    <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Open+Sans">
+
+    <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.3.0/angular.min.js"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.3.0/angular-route.min.js"></script>
+    <script src="static/js/app.js"></script>
+
+  </head>
+  <body>
+    <!-- Main navigation -->
+    <aa-navigation></aa-navigation>
+    
+    <!-- Main View - This is the part that updates when you
+      click the links within the navigation. -->
+    <div ng-view></div>
+
+    <!-- Footer and navigation stays put -->
+    <aa-footer></aa-footer>
+
+  </body>
+</html>

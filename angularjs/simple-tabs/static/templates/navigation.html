@@ -1,0 +1,20 @@
+<div class="nav group">
+  
+  <!-- Main Navigation -->
+  <table class="nav-container">
+    <tr>
+	    <td 
+        ng-repeat="page in navCtrl.pages">
+	      <a href="{{ page[1] }}"> {{ page[0] }} </a>
+	    </td>
+
+			<!-- Search Box -->
+			<input
+				type="text"
+				placeholder="Search.."
+				class="search"
+				ng-model="query">
+    </tr>
+  </table>
+	
+</div>

@@ -1,0 +1,28 @@
+<div class="tabs">
+  <table>
+    <tr>
+      <td
+        ng-repeat="tab in tabCtrl.tabs"
+        ng-class="{ active:tabCtrl.isActive(tab) }">
+        <a href ng-click="tabCtrl.setTab(tab)">
+          {{ tab }}
+        </a>
+      </td>
+    </tr>
+  </table>
+
+  <div ng-show="tabCtrl.isActive('Tab 1')">
+    <strong>Tab 1</strong>
+    <blockquote>Something here</blockquote>
+  </div>
+
+  <div ng-show="tabCtrl.isActive('Tab 2')">
+    <h2>Tab 2!</h2>
+    <em>Something elese here!</em>
+  </div>
+
+  <div ng-show="tabCtrl.isActive('Tab 3')">
+    <h1>Largest tab!!</h1>
+  </div>
+
+</div>
