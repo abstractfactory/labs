@@ -10,6 +10,9 @@ Window {
     x: Screen.width / 2 - main.width
     y: Screen.height / 2 - main.height
 
+    // Location of where to fetch information from
+    property string location: "http://event.pyblish.com/api"
+
     ListView {
         id: pyblishList
         anchors.fill: parent
@@ -22,8 +25,7 @@ Window {
 
     Component.onCompleted: {
         // Create a request, and tell it where the JSON is
-        var req = new XMLHttpRequest(),
-            location = "http://event.pyblish.com/api";
+        var req = new XMLHttpRequest();
 
         // Tell the request to go and get the JSON
         req.open("GET", location, true);
@@ -33,7 +35,6 @@ Window {
         req.onreadystatechange = function () {
             if (req.readyState == 4) {
                 // Convert text from response to JSON
-                console.log(req.responseText);
                 pyblishList.model = JSON.parse(req.responseText);
             }
         };
