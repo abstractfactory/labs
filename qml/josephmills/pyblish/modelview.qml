@@ -17,9 +17,11 @@ Window {
         id: pyblishList
         anchors.fill: parent
         spacing: 10
+        model: ListModel {}
+
         delegate: Button {
             width: parent.width
-            text: pyblishList.model[index]['instance']
+            text: instance
         }
     }
 
@@ -34,8 +36,10 @@ Window {
         // Wait until the readyState is 4, which means it's ready.
         req.onreadystatechange = function () {
             if (req.readyState == 4) {
-                // Convert text from response to JSON
-                pyblishList.model = JSON.parse(req.responseText);
+                // Append each item to the ListModel
+                JSON.parse(req.responseText).forEach(function (item) {
+                    pyblishList.model.append(item);
+                });
             }
         };
     }
