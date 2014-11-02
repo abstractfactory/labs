@@ -11,7 +11,7 @@ Window {
     y: Screen.height / 2 - main.height
 
     // Location of where to fetch information from
-    property string location: "http://event.pyblish.com/api"
+    property string location: "http://event.pyblish.com/event"
 
     ListView {
         id: pyblishList
