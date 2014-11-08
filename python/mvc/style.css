@@ -1,6 +1,7 @@
 QWidget {
   color: white;
   border: none;
+  outline: none;
   background-color: transparent; }
 
 QLabel {
@@ -17,7 +18,7 @@ QPushButton:hover {
 QPushButton:checked {
   background-color: #191919; }
 QPushButton:checked:hover {
-  background-color: #656565; }
+  background-color: #262626; }
 QPushButton:pressed {
   background-color: #656565; }
 
