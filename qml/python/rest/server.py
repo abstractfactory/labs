@@ -1,10 +1,10 @@
 import flask
-# import logging
+import logging
 
 app = flask.Flask(__name__)
 
-# log = logging.getLogger('werkzeug')
-# log.setLevel(logging.ERROR)
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
 
 
 @app.route("/")
